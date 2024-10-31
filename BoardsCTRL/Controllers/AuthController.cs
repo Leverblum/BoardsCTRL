@@ -68,7 +68,7 @@ namespace BoardsProject.Controllers
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.username == userLoginDto.username && u.userStatus == true);
 
-            // Verifica si el usuario existe o está inactivo
+            // Verifica si el usuario existe o está 
             if (user == null)
             {
                 return Unauthorized("Usuario no encontrado o inactivo"); // Mensaje de error
