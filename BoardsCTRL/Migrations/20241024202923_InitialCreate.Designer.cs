@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BoardsCTRL.Migrations
 {
     [DbContext(typeof(BoardsContext))]
-    [Migration("20241004152354_InitialCreate")]
+    [Migration("20241024202923_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -33,30 +33,31 @@ namespace BoardsCTRL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("boardId"));
 
+                    b.Property<string>("boardDescription")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("boardStatus")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("boardTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("categoryId")
                         .HasColumnType("int");
 
-                    b.Property<string>("createdBoardBy")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("createdBoardById")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("createdBoardDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("descriptionBoard")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("modifiedBoardById")
+                        .HasColumnType("int");
 
-                    b.Property<string>("editedBoardBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("editedBoardDate")
+                    b.Property<DateTime?>("modifiedBoardDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<bool>("statusBoard")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("titleBoard")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("boardId");
 
@@ -73,25 +74,24 @@ namespace BoardsCTRL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("categoryId"));
 
-                    b.Property<string>("createdCategoryBy")
+                    b.Property<bool>("categoryStatus")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("categoryTitle")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("createdCategoryById")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("createdCategoryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("editedCaregoryDate")
+                    b.Property<int?>("modifiedCategoryById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("modifiedCategoryDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("editedCategoryBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("statusCategory")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("titleCategory")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("categoryId");
 
@@ -106,24 +106,23 @@ namespace BoardsCTRL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("roleId"));
 
-                    b.Property<string>("createdRoleBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("createdRoleById")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("createdRoleDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("editedRoleBy")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("modifiedRoleById")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime?>("editedRoleDate")
+                    b.Property<DateTime?>("modifiedRoleDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("roleName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("statusRole")
+                    b.Property<bool>("roleStatus")
                         .HasColumnType("bit");
 
                     b.HasKey("roleId");
@@ -139,35 +138,34 @@ namespace BoardsCTRL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("slideId"));
 
+                    b.Property<string>("URL")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("boardId")
                         .HasColumnType("int");
 
-                    b.Property<string>("createdSlideBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("createdSlideById")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("createdSlideDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("editedSlideBy")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("modifiedSlideById")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime?>("editedSlideDate")
+                    b.Property<DateTime?>("modifiedSlideDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("statusSlide")
+                    b.Property<bool>("slideStatus")
                         .HasColumnType("bit");
+
+                    b.Property<string>("slideTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("time")
                         .HasColumnType("int");
-
-                    b.Property<string>("titleSlide")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("url")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("slideId");
 
@@ -191,15 +189,15 @@ namespace BoardsCTRL.Migrations
                     b.Property<DateTime>("createdUserDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("editedUserBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("editedUserDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("modifiedUserById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("modifiedUserDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("passwordHash")
                         .IsRequired()
@@ -208,7 +206,7 @@ namespace BoardsCTRL.Migrations
                     b.Property<int>("roleId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("statusUser")
+                    b.Property<bool>("userStatus")
                         .HasColumnType("bit");
 
                     b.Property<string>("username")

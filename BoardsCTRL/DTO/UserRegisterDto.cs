@@ -12,5 +12,8 @@
 
         // Rol del usuario (Ej. Admin, User) durante el proceso de registro
         public int RoleId { get; set; } // Rol del usuario (Admin, User.)
+
+        public string RoleName { get; set; } // Aquí se añade el nombre del rol
+
     }
 }

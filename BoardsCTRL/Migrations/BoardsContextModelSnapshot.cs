@@ -31,6 +31,7 @@ namespace BoardsCTRL.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("boardId"));
 
                     b.Property<string>("boardDescription")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("boardStatus")
@@ -77,7 +78,7 @@ namespace BoardsCTRL.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("createdCategoryById")
+                    b.Property<int?>("createdCategoryById")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("createdCategoryDate")
@@ -102,7 +103,7 @@ namespace BoardsCTRL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("roleId"));
 
-                    b.Property<int>("createdRoleById")
+                    b.Property<int?>("createdRoleById")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("createdRoleDate")
@@ -141,7 +142,7 @@ namespace BoardsCTRL.Migrations
                     b.Property<int>("boardId")
                         .HasColumnType("int");
 
-                    b.Property<int>("createdSlideById")
+                    b.Property<int?>("createdSlideById")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("createdSlideDate")

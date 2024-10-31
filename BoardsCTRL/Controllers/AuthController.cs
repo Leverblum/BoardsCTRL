@@ -39,13 +39,16 @@ namespace BoardsProject.Controllers
                 return BadRequest("El usuario ya existe"); // Mensaje de error
             }
 
+            // Buscar el rol por nombre
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.roleName == userRegisterDto.RoleName);
+
             // Crear el nuevo usuario
             var user = new User
             {
                 username = userRegisterDto.username,
                 passwordHash = BCrypt.Net.BCrypt.HashPassword(userRegisterDto.password),
                 email = userRegisterDto.email,
-                roleId = userRegisterDto.RoleId,
+                roleId = role.roleId,
                 userStatus = true,
                 createdUserBy = Environment.MachineName,
                 createdUserDate = DateTime.Now
@@ -62,28 +65,17 @@ namespace BoardsProject.Controllers
         {
             // Verificar si el usuario existe, validar la contraseña y comprobar si está activo
             var user = await _context.Users
-    .Include(u => u.Role)
-    .FirstOrDefaultAsync(u => u.username == userLoginDto.Username && u.userStatus == true);
-
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.username == userLoginDto.username && u.userStatus == true);
 
             // Verifica si el usuario existe o está inactivo
-            if (user == null )
+            if (user == null)
             {
                 return Unauthorized("Usuario no encontrado o inactivo"); // Mensaje de error
-            }
-
-            if (user.userStatus == false)
-            {
-                return Unauthorized(" inactivo"); // Mensaje de error
-            }
-            else
-            {
-                return Unauthorized("Usuario no encontrado o inactivo"); // Mensaje de error
-
             }
 
             // Verifica la contraseña
-            if (!BCrypt.Net.BCrypt.Verify(userLoginDto.Password, user.passwordHash))
+            if (!BCrypt.Net.BCrypt.Verify(userLoginDto.password, user.passwordHash))
             {
                 return Unauthorized("Credenciales inválidas"); // Mensaje de error
             }
@@ -97,8 +89,8 @@ namespace BoardsProject.Controllers
             var client = _httpClientFactory.CreateClient();
             var companyLoginRequest = new
             {
-                User = userLoginDto.Username,
-                Passwd = userLoginDto.Password,
+                User = userLoginDto.username,
+                Passwd = userLoginDto.password,
                 IdAplicativo = 3,
                 Firma = "KdNESJeIadQ+U+Q5Qs+8BQ=="
             };
@@ -127,18 +119,19 @@ namespace BoardsProject.Controllers
                 token,
                 userName = user.username,
                 role = user.Role.roleName,
+                userId = user.userId,
                 Message = "Inicio de sesión exitoso." // Mensaje de éxito
             });
         }
-
 
         // Generar el token JWT
         private string GenerateJwtToken(User user)
         {
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.username),
-                new Claim(ClaimTypes.Role, user.Role.roleName)
+            new Claim(JwtRegisteredClaimNames.Sub, user.username),
+            new Claim("userId", user.userId.ToString()),
+            new Claim(ClaimTypes.Role, user.Role.roleName)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
@@ -148,12 +141,23 @@ namespace BoardsProject.Controllers
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(1),
+                expires: DateTime.Now.AddHours(24),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-       
+
+        // Obtener el Id del rol basado en el nombre del rol
+        private async Task<int> GetRoleId(string roleName)
+        {
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.roleName == roleName);
+            if (role == null)
+            {
+                throw new Exception("Rol no encontrado"); // Mensaje de error
+            }
+
+            return role.roleId;
+        }
     }
 }

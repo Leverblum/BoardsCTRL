@@ -107,20 +107,18 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoryDto>> CreateCategory(CategoryDto categoryDto)
     {
-        // Obtiene el nombre del usuario autenticado que esta creando la categoria
-        var userId = (User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-        
-        if (!int.TryParse(userId, out int parsedUserId)) 
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
-            return BadRequest("Error al obtener el Id del usuario.");
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
         }
+
         // Crea una nueva entidad 'Category' a partir del DTO proporcionado
         var category = new Category
         {
             categoryTitle = categoryDto.categoryTitle, // Establece la descripcion
             categoryStatus = categoryDto.categoryStatus, // Establece el estado de la categoria
-            createdCategoryById = parsedUserId, // Registra el usuario que crea la categoria
+            createdCategoryById = userId, // Registra el usuario que crea la categoria
             createdCategoryDate = DateTime.Now // Establece la fecha y hora como fecha de creacion
         };
 
@@ -151,17 +149,17 @@ public class CategoriesController : ControllerBase
         {
             return NotFound();
         }
-        
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userId, out int parseUserId))
+
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
-            return BadRequest("Error al obtener el ID del usuario");
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
         }
 
         // Actualiza las propiedades de la categoria con los valores proporcionados en el DTO
         category.categoryTitle = categoryDto.categoryTitle; // Actualiza la descripcion
         category.categoryStatus = categoryDto.categoryStatus; // Actualiza el estado de la categoria
-        category.modifiedCategoryById = parseUserId; // Registra el usuario que realizo la modificacion
+        category.modifiedCategoryById = userId; // Registra el usuario que realizo la modificacion
         category.modifiedCategoryDate = DateTime.Now; // Establece la fecha actual como fecha de modificacion
 
         // Marca la entidad como modificada en el contexto de la base de datos
@@ -216,14 +214,14 @@ public class CategoriesController : ControllerBase
             category.categoryStatus = !category.categoryStatus;
         }
 
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userId, out int parseUserId))
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
-            return BadRequest("Error al obtener el ID del usuario");
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
         }
 
         // Actualiza las propiedades de modificacion
-        category.modifiedCategoryById = parseUserId; // Registra el usuario que relizo la modificacion
+        category.modifiedCategoryById = userId; // Registra el usuario que relizo la modificacion
         category.modifiedCategoryDate = DateTime.Now; // Establece la fecha actual como fecha de modificacion
 
         // Marca la entidad como modificada y guarda los cambios

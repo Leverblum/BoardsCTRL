@@ -2,32 +2,15 @@
 {
     public class UserDto
     {
-        // Identificador unico del usuario
         public int userId { get; set; }
-
-        // Id del rol asignado al usuario
         public int roleId { get; set; }
-
-        // Nombre de usuario
         public string username { get; set; }
-
-        // Hash de la contraseña del usuario (Almacena la contraseña en formato seguro)
-        public string passwordHash { get; set; }
-
-        public string? email { get; set; }
-
+        public string passwordHash { get; set; } // Cambiado a PascalCase
+        public string email { get; set; }
         public bool userStatus { get; set; }
-
-        // Nombre del usuario que creo la categoria.
-        public string createdUserBy { get; set; }
-
-        // Nombre del usuario que modifico la catergoria por ultima vez
-        public int? modifiedUserById { get; set; }
-
-        // Decha en la que se creo la categoria
+        public string createdUserBy { get; set; } // Añadido
+        public int? modifiedUserById { get; set; } // Añadido
         public DateTime createdUserDate { get; set; }
-
-        // Fecha en la que se modifico la categoria por ultima vez.
         public DateTime? modifiedUserDate { get; set; }
     }
 }

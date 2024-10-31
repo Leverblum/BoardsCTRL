@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,13 +25,13 @@ builder.Services.AddAuthentication(options =>
     // Configuracion de validacion de token JWT
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true, // Valida que el emisor del token coincida.
-        ValidateAudience = true, // Valida que el destinatario del token coincida.
-        ValidateLifetime = true, // Verifica que el token no haya expirado.
-        ValidateIssuerSigningKey = true, // Verifica que el token este firmado correctamente.
-        ValidIssuer = builder.Configuration["Jwt:Issuer"], // Emisor valido
-        ValidAudience = builder.Configuration["Jwt:Audience"], // Audiencia valida
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])) // Clave de firma del token
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
     };
 });
 

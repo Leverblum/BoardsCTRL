@@ -154,8 +154,11 @@ public class BoardsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> PostBoard(BoardDto createBoardDto)
     {
-        // Obtiene el nombre de usuario del usuario autenticado
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Crea un nuevo objeto Board basado en el DTO recibido
         var board = new Board
@@ -182,8 +185,11 @@ public class BoardsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> PutBoard(int id, BoardDto updateBoardDto)
     {
-        // Obtiene el nombre de usuaario del usuario autenticado
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Busca el tablero por su ID
         var board = await _context.Boards.FindAsync(id);
@@ -242,7 +248,11 @@ public class BoardsController : ControllerBase
             board.boardStatus = !board.boardStatus;
         }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Actualiza la informacion del usuario que realizo la modificacion
         board.modifiedBoardById = userId;

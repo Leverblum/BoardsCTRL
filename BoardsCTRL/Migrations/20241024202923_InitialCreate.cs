@@ -17,12 +17,12 @@ namespace BoardsCTRL.Migrations
                 {
                     categoryId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    titleCategory = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    statusCategory = table.Column<bool>(type: "bit", nullable: false),
-                    createdCategoryBy = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    categoryTitle = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    categoryStatus = table.Column<bool>(type: "bit", nullable: false),
+                    createdCategoryById = table.Column<int>(type: "int", nullable: true),
+                    modifiedCategoryById = table.Column<int>(type: "int", nullable: true),
                     createdCategoryDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    editedCategoryBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    editedCaregoryDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    modifiedCategoryDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -36,11 +36,11 @@ namespace BoardsCTRL.Migrations
                     roleId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     roleName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    statusRole = table.Column<bool>(type: "bit", nullable: false),
-                    createdRoleBy = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    roleStatus = table.Column<bool>(type: "bit", nullable: false),
+                    createdRoleById = table.Column<int>(type: "int", nullable: true),
+                    modifiedRoleById = table.Column<int>(type: "int", nullable: true),
                     createdRoleDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    editedRoleBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    editedRoleDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    modifiedRoleDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -53,14 +53,14 @@ namespace BoardsCTRL.Migrations
                 {
                     boardId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    titleBoard = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    descriptionBoard = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     categoryId = table.Column<int>(type: "int", nullable: false),
-                    statusBoard = table.Column<bool>(type: "bit", nullable: false),
-                    createdBoardBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    boardTitle = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    boardDescription = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    boardStatus = table.Column<bool>(type: "bit", nullable: false),
+                    createdBoardById = table.Column<int>(type: "int", nullable: true),
+                    modifiedBoardById = table.Column<int>(type: "int", nullable: true),
                     createdBoardDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    editedBoardDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    editedBoardBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    modifiedBoardDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -79,15 +79,15 @@ namespace BoardsCTRL.Migrations
                 {
                     userId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    roleId = table.Column<int>(type: "int", nullable: false),
                     username = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     passwordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    roleId = table.Column<int>(type: "int", nullable: false),
-                    statusUser = table.Column<bool>(type: "bit", nullable: false),
+                    userStatus = table.Column<bool>(type: "bit", nullable: false),
                     createdUserBy = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    modifiedUserById = table.Column<int>(type: "int", nullable: true),
                     createdUserDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    editedUserBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    editedUserDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    modifiedUserDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -106,15 +106,15 @@ namespace BoardsCTRL.Migrations
                 {
                     slideId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    titleSlide = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    url = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    time = table.Column<int>(type: "int", nullable: false),
                     boardId = table.Column<int>(type: "int", nullable: false),
-                    statusSlide = table.Column<bool>(type: "bit", nullable: false),
-                    createdSlideBy = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    slideTitle = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    URL = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    time = table.Column<int>(type: "int", nullable: false),
+                    slideStatus = table.Column<bool>(type: "bit", nullable: false),
+                    createdSlideById = table.Column<int>(type: "int", nullable: true),
+                    modifiedSlideById = table.Column<int>(type: "int", nullable: true),
                     createdSlideDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    editedSlideBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    editedSlideDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    modifiedSlideDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {

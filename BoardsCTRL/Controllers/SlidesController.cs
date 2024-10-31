@@ -141,8 +141,11 @@ public class SlidesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SlideDto>> CreateSlide(SlideDto slideDto)
     {
-        // Obtener el nombre de usuario del creador (quien hace la solicitud)
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Crear una nueva instancia de la entidad Slide con los datos proporcionados
         var slide = new Slide
@@ -172,8 +175,11 @@ public class SlidesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateSlide(int id, SlideDto slideDto)
     {
-        // Obtener el nombre de usuario de quien hace la solucitud
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Verifica si el ID en la URL coincide con el ID en el DTO
         if (id != slideDto.slideId)
@@ -249,7 +255,11 @@ public class SlidesController : ControllerBase
             slide.slideStatus = !slide.slideStatus; // Alterna el estado si no se proporciona un valor especifico
         }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Actualiza los campos de modificacion
         slide.modifiedSlideById = userId;

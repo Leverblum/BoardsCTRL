@@ -92,8 +92,11 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserDto>> CreateUser(UserDto userDto)
     {
-        // Obtiene el nombre de usuario actual del token JWT
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Verifica si el nombre de usuario ya existe
         var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.username == userDto.username);
@@ -130,8 +133,11 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(int id, UserDto userDto)
     {
-        // Obtiene el nombre de usuario actual del token JWT
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Buscar el usuario por ID en la base de datos
         var user = await _context.Users.FindAsync(id);
@@ -182,7 +188,11 @@ public class UsersController : ControllerBase
             user.userStatus = !user.userStatus; // Alterna el estado si no se proporciona activate
         }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userIdClaim = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+        }
 
         // Asigna el usuario que realiza la modificacion y la fecha actual
         user.modifiedUserById = userId;
