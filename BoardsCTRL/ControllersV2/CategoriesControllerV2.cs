@@ -4,26 +4,34 @@ using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
+using Swashbuckle.AspNetCore.Annotations;
 
-namespace BoardsCTRL.Controllers
+namespace BoardsCTRL.ControllersV2
 {
-    [ApiVersion("1.0")]
+    [ApiVersion("2.0")]
     [ApiController]
     [Route("api/[controller]")]
-    public class CategoriesController : ControllerBase
+    public class CategoriesControllerV2 : ControllerBase
     {
         // Contexto de la base de datos para interactuar con las categorias
         private readonly BoardsContext _context;
 
         // Constructor que inyecta el contexto de base de datos
-        public CategoriesController(BoardsContext context)
+        public CategoriesControllerV2(BoardsContext context)
         {
             _context = context;
         }
 
         // Metodo GET para obtener una lista de categorias con paginacion opcional
         // Se puede acceder a este endpoint con los roles "Admin" o "User"
+
+        /// <summary>
+        /// Obtiene una lista de categorias con opcion de paginacion
+        /// </summary>
+        /// <param name="isPaginated">Numero de la pagina a recuperar (Opcional).</param>
+        /// <param name="pageNumber">Numero de la paginacionpara la paginacion</param>
+        /// <param name="pageSize">Tamaño de la pagina para la paginacion</param>
+        /// <returns>Lista de categorias y detalles de paginacion</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CategoryDto>>> GetCategories([FromQuery] bool isPaginated = true, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 5)
@@ -72,9 +80,14 @@ namespace BoardsCTRL.Controllers
             });
         }
 
-
         // Metodo GET para obtener una categoria especifica por su ID
         // Se puede acceder a este endpoint con los roles "Admin" o "User"
+
+        /// <summary>
+        /// Crea una nueva categoría.
+        /// </summary>
+        /// <param name="categoryDto">Datos de la nueva categoría.</param>
+        /// <returns>Resultado de la operación.</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet("{id}")]
         public async Task<ActionResult<CategoryDto>> GetCategoryById(int id)
@@ -104,8 +117,11 @@ namespace BoardsCTRL.Controllers
             return Ok(categoryDto);
         }
 
-        // Metodo POST para crear una nueva categoria
-        // Solo se permite el acceso a este endpoint con el rol "Admin"
+        /// <summary>
+        /// Crea una nueva categoría.
+        /// </summary>
+        /// <param name="categoryDto">Datos de la nueva categoría.</param>
+        /// <returns>Resultado de la operación.</returns>
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<CategoryDto>> CreateCategory(CategoryDto categoryDto)
@@ -135,6 +151,13 @@ namespace BoardsCTRL.Controllers
 
         // Metodo PUT para actualizar una categoria existente
         // Solo se permite el acceso a este endpoint con el rol "Admin"
+
+        /// <summary>
+        /// Activa o desactiva el estado de una categoría.
+        /// </summary>
+        /// <param name="id">ID de la categoría a actualizar.</param>
+        /// <param name="activate">Valor opcional para definir el estado (true o false).</param>
+        /// <returns>Confirmación de actualización de estado exitosa.</returns>
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCategory(int id, CategoryDto categoryDto)
@@ -193,6 +216,12 @@ namespace BoardsCTRL.Controllers
         // Metodo DELETE (en este caso se usa para alternar el estado) de una categoria
         // Se puede habilitar/deshabilitar una categoria sin eliminarla fisicamente
         // Solo se permite el acceso a este endpoint con el rol "Admin"
+
+        /// <summary>
+        /// Elimina una categoría.
+        /// </summary>
+        /// <param name="id">ID de la categoría a eliminar.</param>
+        /// <returns>Confirmación de eliminación exitosa.</returns>
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> ToggleCategoryStatus(int id, [FromQuery] bool? activate = null)
@@ -232,21 +261,6 @@ namespace BoardsCTRL.Controllers
             await _context.SaveChangesAsync();
 
             // Retorna un codigo 204 (No content) si la operacion fue exitosa
-            return NoContent();
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteCategory(int id)
-        {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-            {
-                return NotFound();
-            }
-
-            _context.Categories.Remove(category);
-            _context.SaveChanges();
             return NoContent();
         }
 

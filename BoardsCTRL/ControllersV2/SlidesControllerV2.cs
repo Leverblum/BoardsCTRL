@@ -4,26 +4,31 @@ using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
-using System.Security.Claims;
 
-namespace BoardsCTRL.Controllers
+namespace BoardsCTRL.ControllersV2
 {
-    [ApiVersion("1.0")]
+    [ApiVersion("2.0")]
     [ApiController]
     [Route("api/[controller]")]
-    public class SlidesController : ControllerBase
+    public class SlidesControllerV2 : ControllerBase
     {
         private readonly BoardsContext _context; // Contexto de la base de datos
 
         // Constructor que inyecta en el contexto de la base de datos
-        public SlidesController(BoardsContext context)
+        public SlidesControllerV2(BoardsContext context)
         {
             _context = context;
         }
 
         // Metodo GET para obtener una lista paginada de diaposivas (slides)
         // Se permite el acceso a usuarios con roles "Admin" y "Users"
+
+        /// <summary>
+        /// Obtiene una lista paginada de Slides
+        /// </summary>
+        /// <param name="pageNumber">Numero de pagina a recuperar (por defecto 1).</param>
+        /// <param name="pageSize">Cantidad de diapositivas por pagina (por defecto 10).</param>
+        /// <returns>Lista paginada de diapositivas.</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SlideDto>>> GetSlides([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
@@ -64,6 +69,12 @@ namespace BoardsCTRL.Controllers
 
         // Metodo GET para obtener una diapositiva especifica por su ID
         // Se permite el acceso a usuarios con roles "Admin" y "Users"
+
+        /// <summary>
+        /// Obtiene una Slide especifica por su ID.
+        /// </summary>
+        /// <param name="id">ID de la diapositiva a recuperar</param>
+        /// <returns>La Slide solicitada</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet("{id}")]
         public async Task<ActionResult<SlideDto>> GetSlideById(int id)
@@ -96,6 +107,14 @@ namespace BoardsCTRL.Controllers
             return Ok(slideDto);
         }
 
+
+        /// <summary>
+        /// Obtiene una lista de Slides para un tablero especifico.
+        /// </summary>
+        /// <param name="boardId">ID del tablero asociado.</param>
+        /// <param name="page">Numero de pagina.</param>
+        /// <param name="size">Tamaño de la pagina</param>
+        /// <returns>Lista de Slides asociadas al tablero</returns>
         [HttpGet("List-Slide-by-board")]
         [Authorize(Roles = "Admin, User")] // Tanto usuarios como administrador pueden visualizar a gusto
         public IActionResult GetSlidesByBoard(int boardId, int page = 1, int size = 20)
@@ -140,6 +159,12 @@ namespace BoardsCTRL.Controllers
 
         // Metodo POST para crear una nueva diapositiva
         // Solo los usuarios con rol "Admin" pueden acceder a este endpoint
+
+        /// <summary>
+        /// Crea una nueva Slide
+        /// </summary>
+        /// <param name="slideDto">Objeto DTO de la diapositiva a crear.</param>
+        /// <returns></returns>
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<SlideDto>> CreateSlide(SlideDto slideDto)
@@ -174,6 +199,12 @@ namespace BoardsCTRL.Controllers
 
         // Metodo PUT para actualizar una diapositiva existente
         // Solo los usuarios con rol "Admin" pueden acceder a este endpoint
+
+        /// <summary>
+        /// Actualiza una diapositiva existente.
+        /// </summary>
+        /// <param name="id">ID de la diapositiva a actualizar.</param>
+        /// <param name="slideDto">Objeto DTO de la diapositiva actualizada.</param>
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateSlide(int id, SlideDto slideDto)
@@ -235,6 +266,13 @@ namespace BoardsCTRL.Controllers
 
         // Metodo DELETE (toggle status) para alternar el estado de una diapositiva (activar/desactivar)
         // Solo los usuarios con rol "Admin" puede acceder a este endpoint
+
+        /// <summary>
+        /// Activa o desactiva el estado de una Slide.
+        /// </summary>
+        /// <param name="id">ID de la Slide a mostrar.</param>
+        /// <param name="activate">Parametro para definir el estado (true o false).</param>
+        /// <returns></returns>
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> ToggleSlideStatus(int id, [FromQuery] bool? activate = null)
@@ -273,21 +311,6 @@ namespace BoardsCTRL.Controllers
             await _context.SaveChangesAsync();
 
             // Retorna un codigo 204 (No Content) si la operacion fue exitosa
-            return NoContent();
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteSlide(int id)
-        {
-            var slide = await _context.Slides.FindAsync(id);
-            if (slide == null)
-            {
-                return NotFound();
-            }
-
-            _context.Slides.Remove(slide);
-            _context.SaveChanges();
             return NoContent();
         }
 

@@ -5,33 +5,55 @@ using BoardsProject.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Swashbuckle.AspNetCore.Annotations;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net.Http;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
 
-namespace BoardsProject.Controllers
+namespace BoardsCTRL.ControllersV2
 {
-    [ApiVersion("1.0")]
+
+    /// <summary>
+    /// Controlador de autenticacion para la version 2 de la API.
+    /// Proporciona endpoints para registrar usuarios y autenticar mediante JWT.
+    /// </summary>
+
+    [ApiVersion("2.0")]
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    public class AuthControllerV2 : ControllerBase
     {
         private readonly BoardsContext _context; // Contexto de la base de datos
         private readonly IConfiguration _configuration; // Configuración de JWT
         private readonly IHttpClientFactory _httpClientFactory; // Para hacer solicitudes HTTP
 
-        public AuthController(BoardsContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        /// <summary>
+        /// Constructor del controlador de autenticacion.
+        /// Inicializa el contexto de base de datos, la configuracion y el cliente HTTP.
+        /// </summary>
+        /// <param name="context">Contexto de la base de datos.</param>
+        /// <param name="configuration">Condiguracion para generar el token JWT.</param>
+        /// <param name="httpClientFactory">Fabrica de clientes HTTP para autenticacion externa.</param>
+        public AuthControllerV2(BoardsContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
+        /// <summary>
+        /// Registra un nuevo usuario en el sistema.
+        /// </summary>
+        /// <param name="userRegisterDto">Datos del usuario para registrarse.</param>
+        /// <returns>Respuesta indicando si el registro fue exitoso.</returns>
+
         // POST: api/Auth/register
         [HttpPost("register")]
+        [SwaggerOperation(
+            Summary = "Registrar un nuevo usuario",
+            Description = "Registra un usuario en el sistema si el nombre de usuario no esta ya en uso")]
+        [SwaggerResponse(200, "Usuario registrado exitosamente")]
+        [SwaggerResponse(400, "El usuario ya existe")]
         public async Task<IActionResult> Register(UserRegisterDto userRegisterDto)
         {
             // Verificar si el usuario ya existe
@@ -61,7 +83,17 @@ namespace BoardsProject.Controllers
             return Ok("Usuario registrado exitosamente"); // Mensaje de éxito
         }
 
+        /// <summary>
+        /// Autentica un usuario y genera un token JWT en caso de exito.
+        /// </summary>
+        /// <param name="userLoginDto">Datos de inicio de sesion del usuario.</param>
+        /// <returns>Token JWT y detalles del usuario autenticado</returns>
         [HttpPost("login")]
+        [SwaggerOperation(
+            Summary = "Iniciar sesion",
+            Description = "Permite a un usuario autenticarse con un nombre de usuario y contraseña.")]
+        [SwaggerResponse(200, "Inicio de sesion exitoso")]
+        [SwaggerResponse(401, "Credenciales invalidas o usuario inactivo")]
         public async Task<IActionResult> Login(UserLoginDto userLoginDto)
         {
             // Verificar si el usuario existe, validar la contraseña y comprobar si está activo
@@ -125,6 +157,12 @@ namespace BoardsProject.Controllers
             });
         }
 
+        /// <summary>
+        /// Genera un token JWT basado en el usuario autenticado.
+        /// </summary>
+        /// <param name="user">Usuario autenticado.</param>
+        /// <returns>Token JWT generado.</returns>
+
         // Generar el token JWT
         private string GenerateJwtToken(User user)
         {
@@ -148,6 +186,12 @@ namespace BoardsProject.Controllers
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
+        /// <summary>
+        /// Obtiene el ID de un rol basado en su nombre.
+        /// </summary>
+        /// <param name="roleName">Nombre del rol.</param>
+        /// <returns>ID del rol.</returns>
+        /// <exception cref="Exception">Si el rol no es encontrado</exception>
 
         // Obtener el Id del rol basado en el nombre del rol
         private async Task<int> GetRoleId(string roleName)

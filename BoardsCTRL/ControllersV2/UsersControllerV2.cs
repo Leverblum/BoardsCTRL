@@ -4,26 +4,31 @@ using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
-namespace BoardsCTRL.Controllers
+namespace BoardsCTRL.ControllersV2
 {
-    [ApiVersion("1.0")]
+    [ApiVersion("2.0")]
     [ApiController]
     [Route("api/[controller]")]
-    public class UsersController : ControllerBase
+    public class UsersControllerV2 : ControllerBase
     {
         // Inyeccion de dependencia del contexto de la base de datos
         private readonly BoardsContext _context;
 
         // Constructor que inicializa el contexto de la base de datos
-        public UsersController(BoardsContext context)
+        public UsersControllerV2(BoardsContext context)
         {
             _context = context;
         }
 
         // GET: Obtener todos los usuarios con paginacion
         // Endpoint accesible por usuarios con rol Admin o User
+
+        /// <summary>
+        /// Obtiene una lista de usuarios con paginacion.
+        /// </summary>
+        /// <param name="pageNumber">Numero de la pagina (por defecto 1).</param>
+        /// <param name="pageSize">Tamaño de la pagina (por defecto 10).</param>
         [Authorize(Roles = "Admin,User")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
@@ -58,7 +63,13 @@ namespace BoardsCTRL.Controllers
         }
 
         // GET: Obtener usuario por ID
-        // Endpoint accesible por usuarios con rol Admin o User
+        // Endpoint accesible por usuarios con rol Admin o User.
+
+        /// <summary>
+        /// Obtiene un usuario especifico por su ID.
+        /// </summary>
+        /// <param name="id">ID del usuario a buscar.</param>
+        /// <returns>Informacion del usuario encontrado.</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetUserById(int id)
@@ -91,6 +102,12 @@ namespace BoardsCTRL.Controllers
 
         // POST: Crear Usuario
         // Endpoint accesible solo por usuarios con rol Admin
+
+        /// <summary>
+        /// Crea un nuevo usuario.
+        /// </summary>
+        /// <param name="userDto">Objeto DTO con los datos del nuevo usuario.</param>
+        /// <returns></returns>
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<UserDto>> CreateUser(UserDto userDto)
@@ -132,6 +149,13 @@ namespace BoardsCTRL.Controllers
 
         // PUT: Actualizar Usuario
         // Endpoint accesible solo por usuarios con rol Admin
+
+        /// <summary>
+        /// Actualiza los daots de un usuario existente.
+        /// </summary>
+        /// <param name="id">ID del usuario a actualizar.</param>
+        /// <param name="userDto">Objeto con los nuevos datos del usuario.</param>
+        /// <returns></returns>
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(int id, UserDto userDto)
@@ -168,6 +192,12 @@ namespace BoardsCTRL.Controllers
 
         // Delete Cambiar el estado del usuaraio (activar/desactivar)
         // Endpoint accesible solo por usuarios con rol Admin
+
+        /// <summary>
+        /// Activa o desactiva un usuario segun el prametro propocionado
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="activate"></param>
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> ToggleUserStatus(int id, [FromQuery] bool? activate = null)
@@ -208,21 +238,6 @@ namespace BoardsCTRL.Controllers
             await _context.SaveChangesAsync();
 
             // Retorna el estado 204 NoContent (sin contenido8)
-            return NoContent();
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteUser(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            _context.Users.Remove(user);
-            _context.SaveChanges();
             return NoContent();
         }
     }

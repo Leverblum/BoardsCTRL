@@ -4,28 +4,39 @@ using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Swashbuckle.AspNetCore.Annotations;
+using System.Collections.Generic;
 using System.Security.Claims;
 
-namespace BoardsCTRL.Controllers
+namespace BoardsCTRL.ControllersV2
 {
-    [ApiVersion("1.0")]
-    [ApiController] // Indica que esta clase es un controlador de API
-    [Route("api/v{version:apiVersion}/[controller]")] // Define la ruta base para este controlador (api/v1/Boards)
-    public class BoardsController : ControllerBase
+    [ApiVersion("2.0")]
+    [ApiController]
+    [Route("api/v{version:apiVersion}/[controller]")] // Define la ruta base para esta versión (api/v2/Boards)
+    public class BoardsControllerV2 : ControllerBase
     {
-        // Inteccion de dependencia del contexto de la base de datos
-        private readonly BoardsContext _context; // Contexto de la base de datos
+        private readonly BoardsContext _context;
 
-        // Contructor que recibe el contexto de la base de datos    
-        public BoardsController(BoardsContext context)
+        public BoardsControllerV2(BoardsContext context)
         {
-            _context = context; // Asigna el contexto de la base de datos
+            _context = context;
         }
 
         // Metodo GET para obyener una lista de todos los tableros con paginacion
         // Requiere autorizacion para roles "Admin" y "User"
-        [Authorize(Roles = "Admin,User")]
+
+        /// <summary>
+        /// Obtiene una lista de tableros con paginación.
+        /// </summary>
+        /// <param name="pageNumber">Número de la página solicitada (predeterminado = 1).</param>
+        /// <param name="pageSize">Cantidad de elementos por página (predeterminado = 10).</param>
+        /// <returns>Lista de tableros con detalles básicos.</returns>
         [HttpGet]
+        [Authorize(Roles = "Admin,User")]
+        [SwaggerOperation(
+            Summary = "Obtener lista de tableros",
+            Description = "Obtiene una lista de todos los tableros en el sistema con paginación.")]
+        [SwaggerResponse(200, "Lista de tableros obtenida exitosamente", typeof(IEnumerable<BoardDto>))]
         public async Task<ActionResult<IEnumerable<BoardDto>>> GetBoards([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             // Obtiene el total de tableros en la base de datos
@@ -64,8 +75,19 @@ namespace BoardsCTRL.Controllers
 
         // Metodo GET para obtener un tablero por su ID
         // Requiere autorizacion para roles "Admin" y "Users"
-        [Authorize(Roles = "Admin,User")]
+
+        /// <summary>
+        /// Obtiene un tablero específico por su ID.
+        /// </summary>
+        /// <param name="id">ID del tablero</param>
+        /// <returns>Detalles del tablero solicitado</returns>
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,User")]
+        [SwaggerOperation(
+            Summary = "Obtener un tablero",
+            Description = "Obtiene los detalles de un tablero específico utilizando su ID.")]
+        [SwaggerResponse(200, "Detalles del tablero obtenidos exitosamente", typeof(BoardDto))]
+        [SwaggerResponse(404, "Tablero no encontrado")]
         public async Task<ActionResult<BoardDto>> GetBoardById(int id)
         {
             // Busca el tablero por su ID e incluye su categoria
@@ -95,8 +117,23 @@ namespace BoardsCTRL.Controllers
             return Ok(boardDto);
         }
 
-        [HttpGet("list-boards-by-category")] // Visualiza todos los tableros conectados a una categoría
-        [Authorize(Roles = "Admin, User")] // Tanto usuarios como administrador pueden visualizar tableros por categoría
+        // Visualiza todos los tableros conectados a una categoría
+        // Tanto usuarios como administrador pueden visualizar tableros por categoría
+
+        /// <summary>
+        /// Obtiene una lista de tableros pertenecientes a una categoría específica, con paginación.
+        /// </summary>
+        /// <param name="categoryId">ID de la categoría para filtrar los tableros.</param>
+        /// <param name="pageNumber">Número de la página solicitada (predeterminado = 1).</param>
+        /// <param name="pageSize">Cantidad de tableros por página (predeterminado = 20).</param>
+        /// <returns>Una lista de tableros asociados a la categoría especificada, junto con información de paginación.</returns>
+        [HttpGet("list-boards-by-category")]
+        [Authorize(Roles = "Admin, User")]
+        [SwaggerOperation(
+            Summary = "Obtener tableros por categoría",
+            Description = "Devuelve una lista de tableros que pertenecen a una categoría específica, con soporte para paginación.")]
+        [SwaggerResponse(200, "Lista de tableros obtenida exitosamente para la categoría solicitada", typeof(object))] // Reemplaza `object` con tu DTO o modelo adecuado
+        [SwaggerResponse(404, "No se encontraron tableros para la categoría especificada")]
         public IActionResult GetBoardsByCategory(int categoryId, int pageNumber = 1, int pageSize = 20)
         {
             // Calcula el número de tableros a omitir
@@ -117,23 +154,23 @@ namespace BoardsCTRL.Controllers
             // Objeto que devolverá con relación a la categoría
             var boardDtos = boards.Select(b => new
             {
-                b.boardId,
-                b.boardTitle,
-                b.boardDescription,
-                b.boardStatus,
-                b.createdBoardById,
-                b.modifiedBoardById,
-                b.createdBoardDate,
-                b.modifiedBoardDate,
+                boardId = b.boardId,
+                boardTitle = b.boardTitle,
+                boardDescription = b.boardDescription,
+                boardStatus = b.boardStatus,
+                createdBoardById = b.createdBoardById,
+                modifiedBoardById = b.modifiedBoardById,
+                createdBoardDate = b.createdBoardDate,
+                modifiedBoardDate = b.modifiedBoardDate,
                 Category = new
                 {
-                    b.Category.categoryId,
-                    b.Category.categoryTitle,
-                    b.Category.createdCategoryById,
-                    b.Category.modifiedCategoryById,
-                    b.Category.createdCategoryDate,
-                    b.Category.modifiedCategoryDate,
-                    b.Category.categoryStatus
+                    categoryId = b.Category.categoryId,
+                    categoryTitle = b.Category.categoryTitle,
+                    createdCategoryById = b.Category.createdCategoryById,
+                    modifiedCategoryById = b.Category.modifiedCategoryById,
+                    createdCategoryDate = b.Category.createdCategoryDate,
+                    modifiedCategoryDate = b.Category.modifiedCategoryDate,
+                    categoryStatus = b.Category.categoryStatus
                 }
             }).ToList();
 
@@ -150,11 +187,21 @@ namespace BoardsCTRL.Controllers
             }); // Respuesta 200 con los tableros de la categoría
         }
 
-
         // Metodo POST para crear un nuevo tablero
         // Solo los usuarios con rol "Admin" pueden usar este metodo
-        [Authorize(Roles = "Admin")]
+
+        /// <summary>
+        /// Crea un nuevo tablero.
+        /// </summary>
+        /// <param name="createBoardDto">Información del tablero a crear</param>
+        /// <returns>El tablero recién creado</returns>
         [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+            Summary = "Crear un nuevo tablero",
+            Description = "Crea un nuevo tablero en el sistema con la información proporcionada.")]
+        [SwaggerResponse(201, "Tablero creado exitosamente", typeof(BoardDto))]
+        [SwaggerResponse(400, "Error en los datos proporcionados")]
         public async Task<IActionResult> PostBoard(BoardDto createBoardDto)
         {
             var userIdClaim = User.FindFirst("userId")?.Value;
@@ -184,8 +231,20 @@ namespace BoardsCTRL.Controllers
 
         // Metodo PUT para actualizar un tablero existente
         // Solo los usuarios con rol "Admin" pueden usar este metodo
-        [Authorize(Roles = "Admin")]
+
+        /// <summary>
+        /// Actualiza un tablero existente.
+        /// </summary>
+        /// <param name="id">ID del tablero a actualizar</param>
+        /// <param name="updateBoardDto">Información del tablero actualizada</param>
+        /// <returns>Respuesta 204 si la actualización es exitosa</returns>
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+            Summary = "Actualizar un tablero",
+            Description = "Actualiza los detalles de un tablero existente utilizando su ID.")]
+        [SwaggerResponse(204, "Tablero actualizado exitosamente")]
+        [SwaggerResponse(404, "Tablero no encontrado")]
         public async Task<IActionResult> PutBoard(int id, BoardDto updateBoardDto)
         {
             var userIdClaim = User.FindFirst("userId")?.Value;
@@ -226,8 +285,20 @@ namespace BoardsCTRL.Controllers
 
         // Metodo DELETE (o Toggle Status) para activar o desactivar un tablero
         // Solo los usuarios con rol "Admin" pueden usar este metodo
-        [Authorize(Roles = "Admin")]
+
+        /// <summary>
+        /// Cambia el estado de un tablero (activar/desactivar).
+        /// </summary>
+        /// <param name="id">ID del tablero</param>
+        /// <param name="activate">Opcional: valor booleano para activar o desactivar.</param>
+        /// <returns>Respuesta 204 si el cambio es exitoso</returns>
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+            Summary = "Cambiar estado de un tablero",
+            Description = "Activa o desactiva el estado de un tablero. Si no se especifica un valor, se alternará el estado actual.")]
+        [SwaggerResponse(204, "Estado del tablero cambiado exitosamente")]
+        [SwaggerResponse(404, "Tablero no encontrado")]
         public async Task<IActionResult> ToggleBoardsStatus(int id, [FromQuery] bool? activate = null)
         {
             // Busca el tablero por su ID
@@ -266,21 +337,6 @@ namespace BoardsCTRL.Controllers
             await _context.SaveChangesAsync();
 
             // Retorna un codigo 204 (No Content) para indicar que la operacion fue exitosa
-            return NoContent();
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteBoard(int id)
-        {
-            var board = await _context.Boards.FindAsync(id);
-            if (board == null)
-            {
-                return NotFound();
-            }
-
-            _context.Boards.Remove(board);
-            _context.SaveChanges();
             return NoContent();
         }
 

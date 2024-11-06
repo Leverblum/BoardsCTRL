@@ -1,20 +1,25 @@
 using BoardsProject.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection; // Para AddVersionedApiExplorer y AddApiVersioning
+using Microsoft.AspNetCore.Mvc.Versioning; // Para opciones de versionado
+using BoardsCTRL.Extensions; // Extensión para versión de API;
+using System.Reflection; // Para obtener información de ensamblados
+using System.IO; // Para trabajar con rutas
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configuración de la conexión a la base de datos con Entity Framework Core y SQL Server.
-// La cadena de conexion se extrae de la configuracion del archivo appsettings.json.
 builder.Services.AddDbContext<BoardsContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configurar el servicio de autenticacion JWT.
-// Aqui se define el esquema de autenticacion por defecto como JWT Bearer
+// Configurar el servicio de autenticación JWT.
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -22,7 +27,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    // Configuracion de validacion de token JWT
+    // Configuración de validación de token JWT
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -50,24 +55,30 @@ builder.Services.AddCors(options =>
 // Registrar IHttpClientFactory
 builder.Services.AddHttpClient();
 
-// Configuracion de Swagger para generar la documentacion de la API.
-// Tambien se añade soporte para la autenticacion con JWT en la interfaz de Swagger.
+// Configurar Swagger para generar documentación de la API y agregar autenticación JWT.
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API BOARDSCTRL", Version = "v1" });
+    c.SwaggerDoc("v2", new OpenApiInfo { Title = "API BOARDSCTRL v2", Version = "v2" });
 
-    // Definicion del esquema de autenticacion JWT en Swagger.
+    var xmlFile = "boardCtrl.xml"; // Ruta del archivo XML
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile); // Obtener la ruta completa
+    c.IncludeXmlComments(xmlPath);
+
+    // Definición del esquema de autenticación JWT en Swagger.
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        In = ParameterLocation.Header, // El token JWT se enviara en el encabezado HTTP.
-        Description = "JWT Authorization header using the Bearer scheme. Just enter the token, no need to include 'Bearer ' prefix.", // Instrucciones para el uso del token.
-        Name = "Authorization", // Nombre del parametro del encabenzado donde se espera el token.
-        Type = SecuritySchemeType.Http, // Tipo de esquema de seguridad
-        Scheme = "bearer",  // Esquema de autenticacion utilizado
-        BearerFormat = "JWT" // Formato del token
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Just enter the token, no need to include 'Bearer ' prefix.",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
     });
 
-    // Requisito de seguridad para que todas las operaciones en Swagger requieran el token JWT.
+    c.EnableAnnotations();
+
+    // Requisito de seguridad para todas las operaciones en Swagger
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -75,41 +86,63 @@ builder.Services.AddSwaggerGen(c =>
             {
                 Reference = new OpenApiReference
                 {
-                    Type = ReferenceType.SecurityScheme, // Referencia al esquema de seguridad
-                    Id = "Bearer" // Identificador del esquema de seguridad
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
                 }
             },
             new string[] {}
         }
     });
+
+    // Incluir comentarios XML en Swagger
+    c.IncludeXmlComments(xmlPath);
 });
 
-builder.Services.AddAuthorization(); // Se añade el servicio de autorizacion.
-builder.Services.AddControllers(); // Se añaden los controladores al servicio de inyeccion de dependencias.
+// Configuración de versionamiento de API
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0); // Versión predeterminada
+    options.AssumeDefaultVersionWhenUnspecified = true; // Usa la versión predeterminada si no se especifica ninguna
+    options.ReportApiVersions = true; // Informar versiones disponibles
+});
+
+// Configuración de Swagger para versiones de API con `IApiVersionDescriptionProvider`
+builder.Services.AddVersionedApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";  // Formato de nombre de versión
+    options.SubstituteApiVersionInUrl = true;
+});
+
+builder.Services.AddAuthorization(); // Añadir servicio de autorización
+builder.Services.AddControllers(); // Añadir controladores
 
 var app = builder.Build();
 
 // Middleware para habilitar CORS
-app.UseCors("AllowAll"); // Agregando el middleware de CORS aquí
+app.UseCors("AllowAll");
 
-// Middleware que redirige todo el trafico HTTP a HTTPS para asegurar las comunicaciones.
+// Middleware para redirigir a HTTPS
 app.UseHttpsRedirection();
 
-// Middleware para gestionar la autenticacion.
+// Middleware para gestión de autenticación y autorización
 app.UseAuthentication();
-
-// Middleware para gestionar la autorizacion basada en roles y politicas.
 app.UseAuthorization();
 
-// Middleware para habilitar la interfaz de Swagger.
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// Configura la aplicación según el entorno
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Boards API v1"); // Configuracion del endpoint de Swagger
-    c.DefaultModelsExpandDepth(-1); // Oculta la expancion automatica de los modelos en Swagger
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BoardsCtrl v1"); // Configuración del endpoint de Swagger
+        c.SwaggerEndpoint("/swagger/v2/swagger.json", "BoardsCtrl v2");
+        c.DefaultModelsExpandDepth(-1); // Opcional, oculta la expansión automática de modelos en Swagger
+    });
+}
 
-// Mapea los controladores de las rutas HTTP.
+// Mapear los controladores de las rutas HTTP
 app.MapControllers();
 
-app.Run(); // Ejecuta la aplicacion
+// Ejecuta la aplicación
+app.Run();

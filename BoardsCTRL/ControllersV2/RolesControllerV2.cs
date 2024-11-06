@@ -6,23 +6,39 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-namespace BoardsProject.Controllers
+namespace BoardsCTRL.ControllersV2
 {
-    [ApiVersion("1.0")]
+    [ApiVersion("2.0")]
     [ApiController]
     [Route("api/[controller]")]
-    public class RolesController : ControllerBase
+    public class RolesControllerV2 : ControllerBase
     {
+        /// <summary>
+        /// Controlador para la gestion de roles en la version 2.0 de la API.
+        /// Incluye endpoints para obtener, crear, y actualizar roles.
+        /// </summary>
         private readonly BoardsContext _context; // Contexto de la base de datos
 
         // Constructor que intecta el contexto de la base de datos
-        public RolesController(BoardsContext context)
+
+        /// <summary>
+        /// Constructor que inicializa el contexto de la base de datos.
+        /// </summary>
+        /// <param name="context">Contexto de la base de datos.</param>
+        public RolesControllerV2(BoardsContext context)
         {
             _context = context;
         }
 
         // Metodo GET para obtener una lista paginada de roles
         // Se puede acceder a este endpoint con los role "Admin" o "User"
+
+        /// <summary>
+        /// Obtiene una lista paginada de roles.
+        /// </summary>
+        /// <param name="pageNumber">Numero de la pagina a consultar (valor predeterminado: 1).</param>
+        /// <param name="pageSize">Numero de roles por pagina (valor predeterminado: 10).</param>
+        /// <returns>Una lista paginada de roles, junto con el numero total de roles.</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Role>>> GetRoles([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
@@ -35,7 +51,7 @@ namespace BoardsProject.Controllers
                 .Skip((pageNumber - 1) * pageSize) // Omite los roles de paginas anteriores
                 .Take(pageSize) // Toma solo el numero de roles especificados por 'pageSize'
                 .ToListAsync(); // Ejecuta la consulta y devuelve una lusta de roles
-             
+
             // Retorna los resultados paginados, incluyendo el numero total de roles, la pagina actual y el tamaño de la pagina
             return Ok(new
             {
@@ -48,6 +64,12 @@ namespace BoardsProject.Controllers
 
         // Metodo GET para obtener un rol especifico por su ID
         // Se puede accefer a este metodo endpoint con los roles "Admin" o "User"
+
+        /// <summary>
+        /// Obtiene un rol especifico por su ID.
+        /// </summary>
+        /// <param name="id">Id del rol a obtener.</param>
+        /// <returns>El rol solucitado.</returns>
         [Authorize(Roles = "Admin,User")]
         [HttpGet("{id}")]
         public async Task<ActionResult<Role>> GetRole(int id)
@@ -67,6 +89,12 @@ namespace BoardsProject.Controllers
 
         // Metodo POST para crear un nuevo rol
         // Solo se permite el acceso a este endpoint con el rol "Admin"
+
+        /// <summary>
+        /// Crea un nuevo rol
+        /// </summary>
+        /// <param name="createRoleDto">Objeto DTO con la informacion del rol a crear</param>
+        /// <returns>El rol creado con ID asignado</returns>
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<RoleDto>> CreateRole(RoleDto createRoleDto)
@@ -93,6 +121,13 @@ namespace BoardsProject.Controllers
         }
 
         // PUT: api/Roles/{id}
+
+        /// <summary>
+        /// Actualiza un rol existente por su ID.
+        /// </summary>
+        /// <param name="id">ID del rol a actualizar</param>
+        /// <param name="updateRoleDto">Objeto DTO con la informacion acualizada del rol.</param>
+        /// <returns>Una respuesta vacia con codigo 204 si la actualizacion es exitosa.</returns>
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRole(int id, RoleDto updateRoleDto)
@@ -132,22 +167,6 @@ namespace BoardsProject.Controllers
         private bool RoleExists(int id)
         {
             return _context.Roles.Any(e => e.roleId == id);
-        }
-  
-
-    [Authorize(Roles = "Admin")]
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteRole(int id)
-        {
-            var role = await _context.Roles.FindAsync(id);
-            if (role == null)
-            {
-                return NotFound();
-            }
-
-            _context.Roles.Remove(role);
-            _context.SaveChanges();
-            return NoContent();
         }
     }
 }
