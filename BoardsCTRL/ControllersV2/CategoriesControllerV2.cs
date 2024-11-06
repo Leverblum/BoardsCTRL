@@ -10,7 +10,7 @@ namespace BoardsCTRL.ControllersV2
 {
     [ApiVersion("2.0")]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class CategoriesControllerV2 : ControllerBase
     {
         // Contexto de la base de datos para interactuar con las categorias
@@ -149,120 +149,87 @@ namespace BoardsCTRL.ControllersV2
             return CreatedAtAction(nameof(GetCategoryById), new { id = category.categoryId }, categoryDto);
         }
 
-        // Metodo PUT para actualizar una categoria existente
-        // Solo se permite el acceso a este endpoint con el rol "Admin"
-
-        /// <summary>
-        /// Activa o desactiva el estado de una categoría.
-        /// </summary>
-        /// <param name="id">ID de la categoría a actualizar.</param>
-        /// <param name="activate">Valor opcional para definir el estado (true o false).</param>
-        /// <returns>Confirmación de actualización de estado exitosa.</returns>
+        // Método PATCH para actualizar parcialmente una categoría
+        [HttpPatch("{id}")]
         [Authorize(Roles = "Admin")]
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCategory(int id, CategoryDto categoryDto)
+        [SwaggerOperation(
+            Summary = "Actualizar parcialmente una categoría",
+            Description = "Actualiza campos específicos de una categoría sin necesidad de enviar todo el objeto.")]
+        [SwaggerResponse(204, "Categoría actualizada exitosamente")]
+        [SwaggerResponse(404, "Categoría no encontrada")]
+        public async Task<IActionResult> ActualizarCategoryPatch(int id, [FromBody] CategoryDto categoryDTO)
         {
-            // Verifica si el ID proporcionado coincide con el ID del DTO de la categoria, si no coincide, retorna un codigo 400 (Bad Request)
-            if (id != categoryDto.categoryId)
+            // Verifica si el ID es inválido o si el DTO es nulo
+            if (id <= 0 || categoryDTO == null)
             {
-                return BadRequest();
+                return BadRequest(new { message = "Por favor, ingrese todos los campos correctamente." });
             }
 
-            // Si no se encuentra la categoria, retorna un codigo 404 (Not Found)
-            var category = await _context.Categories.FindAsync(id);
-
-            if (category == null)
+            // Busca la categoría en la base de datos
+            var existingCategory = await _context.Categories.FindAsync(id);
+            if (existingCategory == null)
             {
-                return NotFound();
+                return NotFound(new { message = "El ID no es válido." });
             }
 
+            // Verifica el ID del usuario
             var userIdClaim = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+                return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Actualiza las propiedades de la categoria con los valores proporcionados en el DTO
-            category.categoryTitle = categoryDto.categoryTitle; // Actualiza la descripcion
-            category.categoryStatus = categoryDto.categoryStatus; // Actualiza el estado de la categoria
-            category.modifiedCategoryById = userId; // Registra el usuario que realizo la modificacion
-            category.modifiedCategoryDate = DateTime.Now; // Establece la fecha actual como fecha de modificacion
+            // Valida la longitud del título de la categoría
+            if (!string.IsNullOrWhiteSpace(categoryDTO.categoryTitle) && categoryDTO.categoryTitle.Length > 100)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "El título de la categoría no puede tener más de 100 caracteres." });
+            }
 
-            // Marca la entidad como modificada en el contexto de la base de datos
-            _context.Entry(category).State = EntityState.Modified;
+            // Solo actualiza los campos que han sido proporcionados
+            if (!string.IsNullOrWhiteSpace(categoryDTO.categoryTitle))
+            {
+                // Verifica si ya existe una categoría con el mismo título
+                bool categoryExists = await _context.Categories.AnyAsync(c => c.categoryTitle == categoryDTO.categoryTitle
+                                                                              && c.categoryId != id);
+                if (categoryExists)
+                {
+                    return BadRequest(new { message = "Ya existe una categoría con este nombre." });
+                }
+                existingCategory.categoryTitle = categoryDTO.categoryTitle;
+            }
 
-            // Intenta guardar los camvios en la base de datos
+            if (categoryDTO.categoryStatus != null)
+            {
+                existingCategory.categoryStatus = categoryDTO.categoryStatus; // Aquí ya está bien si es un bool.
+            }
+
+            // Asigna el usuario que hizo la modificación
+            existingCategory.modifiedCategoryById = userId;
+            existingCategory.modifiedCategoryDate = DateTime.Now;
+
+            // Marca la categoría como modificada en el contexto
+            _context.Entry(existingCategory).State = EntityState.Modified;
+
             try
             {
+                // Guarda los cambios en la base de datos
                 await _context.SaveChangesAsync();
             }
-            // Captura excepciones de concurrencia, por ejemplo, cuando dos usuarios intentan la misma entidad al tiempo
             catch (DbUpdateConcurrencyException)
             {
+                // Maneja la excepción si hay problemas de concurrencia
                 if (!CategoryExists(id))
                 {
-                    return NotFound();
+                    return NotFound(new { message = "La categoría no existe." });
                 }
-                else
-                {
-                    throw; // Lanza la excepcion si ocurrio otro tipo de error
-                }
+
+                throw; // Re-lanza la excepción si no se ha manejado
             }
 
-            // Retorna un codigo 204 (No content) si la actualizacion fue exitosa
-            return NoContent();
+            // Responde con el mensaje de éxito
+            return Ok(new { message = "Categoría actualizada correctamente" });
         }
 
-        // Metodo DELETE (en este caso se usa para alternar el estado) de una categoria
-        // Se puede habilitar/deshabilitar una categoria sin eliminarla fisicamente
-        // Solo se permite el acceso a este endpoint con el rol "Admin"
-
-        /// <summary>
-        /// Elimina una categoría.
-        /// </summary>
-        /// <param name="id">ID de la categoría a eliminar.</param>
-        /// <returns>Confirmación de eliminación exitosa.</returns>
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> ToggleCategoryStatus(int id, [FromQuery] bool? activate = null)
-        {
-            // Busca la categoria en la base de datos
-            var category = await _context.Categories.FindAsync(id);
-
-            // Si no se encuentra la categoria, retorna un codigo 404 (Not Found)
-            if (category == null)
-            {
-                return NotFound();
-            }
-
-            // SI se proporciona el parametro 'activate', se establece el estado de la categoria segun su valor (true/false)
-            if (activate.HasValue)
-            {
-                category.categoryStatus = activate.Value; // True o false segun el parametro
-            }
-            // Si no se proporciona, simplemente alterna el estado actual (true a false, o viceversa)
-            else
-            {
-                category.categoryStatus = !category.categoryStatus;
-            }
-
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-            {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
-            }
-
-            // Actualiza las propiedades de modificacion
-            category.modifiedCategoryById = userId; // Registra el usuario que relizo la modificacion
-            category.modifiedCategoryDate = DateTime.Now; // Establece la fecha actual como fecha de modificacion
-
-            // Marca la entidad como modificada y guarda los cambios
-            _context.Entry(category).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            // Retorna un codigo 204 (No content) si la operacion fue exitosa
-            return NoContent();
-        }
 
         // Metodo auxiliar para verificar si una categoria existe en la base de datos
         private bool CategoryExists(int id)

@@ -1,7 +1,9 @@
-﻿using BoardsProject.Data;
+﻿using Azure;
+using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
@@ -229,43 +231,78 @@ namespace BoardsCTRL.ControllersV2
             return CreatedAtAction("GetBoards", new { id = board.boardId }, board);
         }
 
-        // Metodo PUT para actualizar un tablero existente
-        // Solo los usuarios con rol "Admin" pueden usar este metodo
-
-        /// <summary>
-        /// Actualiza un tablero existente.
-        /// </summary>
-        /// <param name="id">ID del tablero a actualizar</param>
-        /// <param name="updateBoardDto">Información del tablero actualizada</param>
-        /// <returns>Respuesta 204 si la actualización es exitosa</returns>
-        [HttpPut("{id}")]
+        // Metodo PATCH para actualizar campos especificos
+        [HttpPatch("{id}")]
         [Authorize(Roles = "Admin")]
         [SwaggerOperation(
-            Summary = "Actualizar un tablero",
-            Description = "Actualiza los detalles de un tablero existente utilizando su ID.")]
+            Summary = "Actualizar parcialmente un tablero",
+            Description = "Actualiza campos especificos de un tablero sin necesidad de enviar todo el objeto.")]
         [SwaggerResponse(204, "Tablero actualizado exitosamente")]
         [SwaggerResponse(404, "Tablero no encontrado")]
-        public async Task<IActionResult> PutBoard(int id, BoardDto updateBoardDto)
+        public async Task<IActionResult> ActualizarBoardPatch(int id, [FromBody] BoardDto boardDTO)
         {
+            // Verifica si el ID es inválido o si el DTO es nulo
+            if (id <= 0 || boardDTO == null)
+            {
+                return BadRequest(new { message = "Por favor, ingrese todos los campos correctamente." });
+            }
+
+            // Busca el tablero en la base de datos
+            var existingBoard = await _context.Boards.FindAsync(id);
+            if (existingBoard == null)
+            {
+                return NotFound(new { message = "El ID no es válido." });
+            }
+
+            // Verifica el ID del usuario
             var userIdClaim = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+                return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Busca el tablero por su ID
-            var board = await _context.Boards.FindAsync(id);
+            // Valida la longitud del título
+            if (boardDTO.boardTitle.Length > 100)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "El título del tablero no puede tener más de 100 caracteres." });
+            }
 
-            // Si no se encuentra el tablero, retorna un error 404 (Not Found)
-            if (board == null) return NotFound();
+            // Valida la longitud de la descripción
+            if (boardDTO.boardDescription.Length > 255)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "La descripción del tablero no puede tener más de 255 caracteres." });
+            }
 
-            // Actualiza los valores del tablero con la informacion proporcionada en el DTO
-            board.boardTitle = updateBoardDto.boardTitle;
-            board.boardDescription = updateBoardDto.boardDescription;
-            board.categoryId = updateBoardDto.categoryId;
-            board.boardStatus = updateBoardDto.boardStatus;
-            board.modifiedBoardById = userId;  // Asigna el usuario que realizo la modificacion
-            board.modifiedBoardDate = DateTime.Now; // Asigna la fecha de modificacion
+            // Solo actualiza los campos que han sido proporcionados
+            if (!string.IsNullOrWhiteSpace(boardDTO.boardTitle))
+            {
+                // Verifica si ya existe un board con el mismo título en la misma categoría
+                bool boardExists = await _context.Boards.AnyAsync(b => b.boardTitle == boardDTO.boardTitle
+                                                                        && b.categoryId == existingBoard.categoryId
+                                                                        && b.boardId != id);
+                if (boardExists)
+                {
+                    return BadRequest(new { message = "Ya existe un tablero con este nombre en la misma categoría." });
+                }
+                existingBoard.boardTitle = boardDTO.boardTitle;
+            }
+
+            if (!string.IsNullOrWhiteSpace(boardDTO.boardDescription))
+            {
+                existingBoard.boardDescription = boardDTO.boardDescription;
+            }
+
+            if (boardDTO.boardStatus != null)
+            {
+                existingBoard.boardStatus = boardDTO.boardStatus; // Aquí ya está bien si es un bool.
+            }
+
+            // Asigna el usuario que hizo la modificación
+            existingBoard.modifiedBoardById = userId;
+            existingBoard.modifiedBoardDate = DateTime.Now;
+
+            // Marca el board como modificado en el contexto
+            _context.Entry(existingBoard).State = EntityState.Modified;
 
             try
             {
@@ -274,71 +311,19 @@ namespace BoardsCTRL.ControllersV2
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Verifica si el tablero aun existe antes de lanzar una excepcion
-                if (!BoardExists(id)) return NotFound();
-                else throw;
+                // Maneja la excepción si hay problemas de concurrencia
+                if (!BoardExists(id))
+                {
+                    return NotFound(new { message = "El tablero no existe." });
+                }
+
+                throw; // Re-lanza la excepción si no se ha manejado
             }
 
-            // Retorna un codigo 204 (No Content) para indicar que la operacion fue exitosa
-            return NoContent();
+            // Responde con el mensaje de éxito
+            return Ok(new { message = "Tablero actualizado correctamente" });
         }
 
-        // Metodo DELETE (o Toggle Status) para activar o desactivar un tablero
-        // Solo los usuarios con rol "Admin" pueden usar este metodo
-
-        /// <summary>
-        /// Cambia el estado de un tablero (activar/desactivar).
-        /// </summary>
-        /// <param name="id">ID del tablero</param>
-        /// <param name="activate">Opcional: valor booleano para activar o desactivar.</param>
-        /// <returns>Respuesta 204 si el cambio es exitoso</returns>
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        [SwaggerOperation(
-            Summary = "Cambiar estado de un tablero",
-            Description = "Activa o desactiva el estado de un tablero. Si no se especifica un valor, se alternará el estado actual.")]
-        [SwaggerResponse(204, "Estado del tablero cambiado exitosamente")]
-        [SwaggerResponse(404, "Tablero no encontrado")]
-        public async Task<IActionResult> ToggleBoardsStatus(int id, [FromQuery] bool? activate = null)
-        {
-            // Busca el tablero por su ID
-            var board = await _context.Boards.FindAsync(id);
-
-            // Si no se encuentra el tablero, retorna un error 404 (Not Found)
-            if (board == null)
-            {
-                return NotFound();
-            }
-
-            // Si se proporciona el parametro activate, establece el estado del tablero segun el valor de activate
-            // Si no se proporciona, alterna el estado actual del tablero
-            if (activate.HasValue)
-            {
-                board.boardStatus = activate.Value; // True o false segun el parametro
-            }
-            else
-            {
-                // Si no se proporciona, simplemente alterna el estado actual
-                board.boardStatus = !board.boardStatus;
-            }
-
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-            {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
-            }
-
-            // Actualiza la informacion del usuario que realizo la modificacion
-            board.modifiedBoardById = userId;
-            board.modifiedBoardDate = DateTime.Now;
-
-            // Marca el objeto como modificado en el contexto de datos
-            _context.Entry(board).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            // Retorna un codigo 204 (No Content) para indicar que la operacion fue exitosa
-            return NoContent();
-        }
 
         // Metodo privado para verificar si un tablero existe por su ID
         private bool BoardExists(int id)

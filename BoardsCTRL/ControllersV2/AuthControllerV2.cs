@@ -20,7 +20,7 @@ namespace BoardsCTRL.ControllersV2
 
     [ApiVersion("2.0")]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class AuthControllerV2 : ControllerBase
     {
         private readonly BoardsContext _context; // Contexto de la base de datos
@@ -41,13 +41,13 @@ namespace BoardsCTRL.ControllersV2
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
+        // POST: api/Auth/register
+
         /// <summary>
         /// Registra un nuevo usuario en el sistema.
         /// </summary>
         /// <param name="userRegisterDto">Datos del usuario para registrarse.</param>
         /// <returns>Respuesta indicando si el registro fue exitoso.</returns>
-
-        // POST: api/Auth/register
         [HttpPost("register")]
         [SwaggerOperation(
             Summary = "Registrar un nuevo usuario",
@@ -59,17 +59,16 @@ namespace BoardsCTRL.ControllersV2
             // Verificar si el usuario ya existe
             if (await _context.Users.AnyAsync(u => u.username == userRegisterDto.username))
             {
-                return BadRequest("El usuario ya existe"); // Mensaje de error
+                return BadRequest("El usuario ya existe");
             }
 
             // Buscar el rol por nombre
             var role = await _context.Roles.FirstOrDefaultAsync(r => r.roleName == userRegisterDto.RoleName);
 
-            // Crear el nuevo usuario
+            // Crear el nuevo usuario sin contraseña
             var user = new User
             {
                 username = userRegisterDto.username,
-                passwordHash = BCrypt.Net.BCrypt.HashPassword(userRegisterDto.password),
                 email = userRegisterDto.email,
                 roleId = role.roleId,
                 userStatus = true,
@@ -80,7 +79,7 @@ namespace BoardsCTRL.ControllersV2
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok("Usuario registrado exitosamente"); // Mensaje de éxito
+            return Ok("Usuario registrado exitosamente");
         }
 
         /// <summary>
@@ -96,29 +95,7 @@ namespace BoardsCTRL.ControllersV2
         [SwaggerResponse(401, "Credenciales invalidas o usuario inactivo")]
         public async Task<IActionResult> Login(UserLoginDto userLoginDto)
         {
-            // Verificar si el usuario existe, validar la contraseña y comprobar si está activo
-            var user = await _context.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.username == userLoginDto.username && u.userStatus == true);
-
-            // Verifica si el usuario existe o está inactivo
-            if (user == null)
-            {
-                return Unauthorized("Usuario no encontrado o inactivo"); // Mensaje de error
-            }
-
-            // Verifica la contraseña
-            if (!BCrypt.Net.BCrypt.Verify(userLoginDto.password, user.passwordHash))
-            {
-                return Unauthorized("Credenciales inválidas"); // Mensaje de error
-            }
-
-            if (user.Role == null)
-            {
-                return Unauthorized("El rol del usuario no está disponible"); // Mensaje de error
-            }
-
-            // Autenticación contra el dominio
+            // Autenticación contra el dominio externo
             var client = _httpClientFactory.CreateClient();
             var companyLoginRequest = new
             {
@@ -128,22 +105,29 @@ namespace BoardsCTRL.ControllersV2
                 Firma = "KdNESJeIadQ+U+Q5Qs+8BQ=="
             };
 
-            // Enviar la solicitud al servicio externo
+            // Enviar solicitud al servicio externo
             var response = await client.PostAsJsonAsync("https://www.finanzauto.com.co/Services/ApiWeb/api/RespuestaLg", companyLoginRequest);
 
-            // Verifica la respuesta del servidor externo
             if (!response.IsSuccessStatusCode)
             {
-                // Log de error en caso de que la llamada al servidor externo falle
-                return Unauthorized("Credenciales inválidas del servidor externo"); // Mensaje de error
+                return Unauthorized("Credenciales inválidas del servidor externo");
             }
 
-            // Verificar la respuesta del servicio externo
+            // Verificar respuesta del servicio externo
             var externalResponse = await response.Content.ReadFromJsonAsync<ExternalResponse>();
             if (externalResponse == null || externalResponse.Mensaje.CodigoMensaje != 0)
             {
-                return Unauthorized("Credenciales inválidas del servidor externo"); // Mensaje de error
+                return Unauthorized("Credenciales inválidas del servidor externo");
             }
+
+            // Obtener el usuario después de la autenticación externa
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.username == userLoginDto.username && u.userStatus == true);
+
+            if (user == null || user.Role == null)
+            {
+                return Unauthorized("Usuario no encontrado o rol no disponible");
+            }
+
             // Generar token JWT
             var token = GenerateJwtToken(user);
 
@@ -153,7 +137,7 @@ namespace BoardsCTRL.ControllersV2
                 userName = user.username,
                 role = user.Role.roleName,
                 userId = user.userId,
-                Message = "Inicio de sesión exitoso." // Mensaje de éxito
+                Message = "Inicio de sesión exitoso."
             });
         }
 

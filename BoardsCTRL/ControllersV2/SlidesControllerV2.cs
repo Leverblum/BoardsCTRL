@@ -2,6 +2,7 @@
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ namespace BoardsCTRL.ControllersV2
 {
     [ApiVersion("2.0")]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class SlidesControllerV2 : ControllerBase
     {
         private readonly BoardsContext _context; // Contexto de la base de datos
@@ -197,31 +198,25 @@ namespace BoardsCTRL.ControllersV2
             return CreatedAtAction(nameof(GetSlideById), new { id = slide.slideId }, slideDto);
         }
 
-        // Metodo PUT para actualizar una diapositiva existente
+        // Metodo PATCH para actualizar parcialmente una diapositiva existente
         // Solo los usuarios con rol "Admin" pueden acceder a este endpoint
 
         /// <summary>
-        /// Actualiza una diapositiva existente.
+        /// Actualiza parcialmente una diapositiva existente.
         /// </summary>
         /// <param name="id">ID de la diapositiva a actualizar.</param>
-        /// <param name="slideDto">Objeto DTO de la diapositiva actualizada.</param>
+        /// <param name="slideDto">Objeto DTO con los campos a actualizar.</param>
+        /// <returns>Una respuesta vacia con codigo 204 si la actualizacion es exitosa.</returns>
         [Authorize(Roles = "Admin")]
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSlide(int id, SlideDto slideDto)
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> PartialUpdateSlide(int id, [FromBody] JsonPatchDocument<SlideDto> patchDoc)
         {
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            if (patchDoc == null)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+                return BadRequest(new { Code = "InvalidInput", Message = "El documento de parche no puede ser nulo." });
             }
 
-            // Verifica si el ID en la URL coincide con el ID en el DTO
-            if (id != slideDto.slideId)
-            {
-                return BadRequest();
-            }
-
-            // Busca la diapositiva por si ID en la base de datos
+            // Busca la diapositiva por su ID en la base de datos
             var slide = await _context.Slides.FindAsync(id);
 
             // Si no se encuentra la diapositiva, retorna un codigo 404 (Not Found)
@@ -230,26 +225,55 @@ namespace BoardsCTRL.ControllersV2
                 return NotFound();
             }
 
-            // Actualiza los campos de la diapositiva con los valores proporcionados en el DTO
+            // Crea un DTO a partir de la diapositiva actual
+            var slideDto = new SlideDto
+            {
+                slideId = slide.slideId,
+                slideTitle = slide.slideTitle,
+                URL = slide.URL,
+                time = slide.time,
+                boardId = slide.boardId,
+                slideStatus = slide.slideStatus,
+                createdSlideById = slide.createdSlideById,
+                createdSlideDate = slide.createdSlideDate,
+                modifiedSlideById = slide.modifiedSlideById,
+                modifiedSlideDate = slide.modifiedSlideDate
+            };
+
+            // Aplica los cambios parciales al DTO
+            patchDoc.ApplyTo(slideDto, ModelState);
+
+            // Verifica si el modelo es válido después de aplicar el parche
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Verifica el ID del usuario
+            var userIdClaim = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+            }
+
+            // Actualiza los campos de la diapositiva con los valores modificados del DTO
             slide.slideTitle = slideDto.slideTitle;
             slide.URL = slideDto.URL;
             slide.time = slideDto.time;
             slide.boardId = slideDto.boardId;
             slide.slideStatus = slideDto.slideStatus;
-            slide.modifiedSlideById = userId;
+            slide.modifiedSlideById = userId; // Usuario que realiza el cambio
             slide.modifiedSlideDate = DateTime.Now;
 
             // Marca la diapositiva como modificada en el contexto de la base de datos
             _context.Entry(slide).State = EntityState.Modified;
 
-            // Intenta guardar los cambios en la base de datos
             try
             {
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Si la diapositiva no exite, retorna un codigo 404 (Not Found)
                 if (!SlideExists(id))
                 {
                     return NotFound();
@@ -260,59 +284,10 @@ namespace BoardsCTRL.ControllersV2
                 }
             }
 
-            // Retorna un codigo 204 (No Content) si la actualizacion fue exitosa
+            // Retorna un código 204 (No Content) si la actualización parcial fue exitosa
             return NoContent();
         }
 
-        // Metodo DELETE (toggle status) para alternar el estado de una diapositiva (activar/desactivar)
-        // Solo los usuarios con rol "Admin" puede acceder a este endpoint
-
-        /// <summary>
-        /// Activa o desactiva el estado de una Slide.
-        /// </summary>
-        /// <param name="id">ID de la Slide a mostrar.</param>
-        /// <param name="activate">Parametro para definir el estado (true o false).</param>
-        /// <returns></returns>
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> ToggleSlideStatus(int id, [FromQuery] bool? activate = null)
-        {
-            // Busca la diapositiva por su ID en la base de datos
-            var slide = await _context.Slides.FindAsync(id);
-
-            // Si no se encuentra la diapositiva, retorna un codigo 404 (Not Found)
-            if (slide == null)
-            {
-                return NotFound();
-            }
-
-            // Cambia el estado de la diapositiva segun el valor del parametro 'activate'
-            if (activate.HasValue)
-            {
-                slide.slideStatus = activate.Value; // Activa o desactiva segun el valor proporcionado
-            }
-            else
-            {
-                slide.slideStatus = !slide.slideStatus; // Alterna el estado si no se proporciona un valor especifico
-            }
-
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-            {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
-            }
-
-            // Actualiza los campos de modificacion
-            slide.modifiedSlideById = userId;
-            slide.modifiedSlideDate = DateTime.Now;
-
-            // Marca la diapositiva como modificada en el contexto de la base de datos
-            _context.Entry(slide).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            // Retorna un codigo 204 (No Content) si la operacion fue exitosa
-            return NoContent();
-        }
 
         // Metodo privado para verificar si una diapositiva existe por su ID
         private bool SlideExists(int id)

@@ -2,6 +2,7 @@
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ namespace BoardsCTRL.ControllersV2
 {
     [ApiVersion("2.0")]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class UsersControllerV2 : ControllerBase
     {
         // Inyeccion de dependencia del contexto de la base de datos
@@ -132,7 +133,6 @@ namespace BoardsCTRL.ControllersV2
             var user = new User
             {
                 username = userDto.username,
-                passwordHash = hashedPassword, // Almacena el hash de la contraseña
                 roleId = userDto.roleId,
                 userStatus = userDto.userStatus,
                 modifiedUserById = userId, // Asigna el usuario que lo creó
@@ -147,62 +147,25 @@ namespace BoardsCTRL.ControllersV2
             return CreatedAtAction(nameof(GetUserById), new { id = user.userId }, userDto);
         }
 
-        // PUT: Actualizar Usuario
+        // PATCH: Actualizar parcialmente un usuario
         // Endpoint accesible solo por usuarios con rol Admin
 
         /// <summary>
-        /// Actualiza los daots de un usuario existente.
+        /// Actualiza parcialmente los datos de un usuario.
         /// </summary>
         /// <param name="id">ID del usuario a actualizar.</param>
-        /// <param name="userDto">Objeto con los nuevos datos del usuario.</param>
+        /// <param name="patchDoc">Documento de parche con los campos a actualizar.</param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(int id, UserDto userDto)
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> PartialUpdateUser(int id, [FromBody] JsonPatchDocument<UserDto> patchDoc)
         {
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            if (patchDoc == null)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+                return BadRequest(new { Code = "InvalidInput", Message = "El documento de parche no puede ser nulo." });
             }
 
-            // Buscar el usuario por ID en la base de datos
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            // Actualiza los campos edl usuario con los datos del DTO
-            user.username = userDto.username;
-            user.roleId = userDto.roleId;
-            user.userStatus = userDto.userStatus;
-            user.modifiedUserById = userId;
-            user.modifiedUserDate = DateTime.Now;
-
-            // MArca el usuario como modificado en el contexto
-            _context.Entry(user).State = EntityState.Modified;
-
-            // Guarda los cambios en la base de datos
-            await _context.SaveChangesAsync();
-
-            // Retorna el estado 204 NoContent (Sin contenido)
-            return NoContent();
-        }
-
-        // Delete Cambiar el estado del usuaraio (activar/desactivar)
-        // Endpoint accesible solo por usuarios con rol Admin
-
-        /// <summary>
-        /// Activa o desactiva un usuario segun el prametro propocionado
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="activate"></param>
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> ToggleUserStatus(int id, [FromQuery] bool? activate = null)
-        {
-            // Busca el usuario por ID en la base de datos
+            // Busca al usuario por ID en la base de datos
             var user = await _context.Users.FindAsync(id);
 
             // Si no se encuentra el usuario, retorna NotFound
@@ -211,34 +174,71 @@ namespace BoardsCTRL.ControllersV2
                 return NotFound();
             }
 
-            // Cambiar el estado segun el valor del parametro activate
-            if (activate.HasValue)
+            // Crea un DTO a partir del usuario actual
+            var userDto = new UserDto
             {
-                user.userStatus = activate.Value; // True o false segun el parametro
-            }
-            else
+                userId = user.userId,
+                username = user.username,
+                roleId = user.roleId,
+                userStatus = user.userStatus,
+                createdUserBy = user.createdUserBy,
+                modifiedUserById = user.modifiedUserById,
+                createdUserDate = user.createdUserDate,
+                modifiedUserDate = user.modifiedUserDate
+            };
+
+            // Aplica los cambios parciales al DTO
+            patchDoc.ApplyTo(userDto, ModelState);
+
+            // Verifica si el modelo es válido después de aplicar el parche
+            if (!ModelState.IsValid)
             {
-                user.userStatus = !user.userStatus; // Alterna el estado si no se proporciona activate
+                return BadRequest(ModelState);
             }
 
+            // Aquí va la conversión de userId a int? para asegurar la correcta asignación
             var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            int? modifiedById = null;
+            if (!string.IsNullOrEmpty(userIdClaim))
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+                modifiedById = int.Parse(userIdClaim); // Convierte el claim en int?
             }
 
-            // Asigna el usuario que realiza la modificacion y la fecha actual
-            user.modifiedUserById = userId;
+            // Actualiza los campos del usuario con los valores modificados del DTO
+            user.username = userDto.username ?? user.username; // Solo actualiza si hay un nuevo valor
+            user.roleId = userDto.roleId; // Solo actualiza si hay un nuevo valor
+            user.userStatus = userDto.userStatus; // Solo actualiza si hay un nuevo valor
+            user.modifiedUserById = modifiedById; // Asigna el ID del usuario que hace la modificación
             user.modifiedUserDate = DateTime.Now;
 
-            // Marca el usuario como modificado en el contenido
+            // Marca el usuario como modificado en el contexto de la base de datos
             _context.Entry(user).State = EntityState.Modified;
 
-            // Guarda los cambios en la base de datos
-            await _context.SaveChangesAsync();
+            try
+            {
+                // Guarda los cambios en la base de datos
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UserExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw; // Si ocurre otro error, lo lanza
+                }
+            }
 
-            // Retorna el estado 204 NoContent (sin contenido8)
+            // Retorna un código 204 (No Content) si la actualización parcial fue exitosa
             return NoContent();
         }
+
+        private bool UserExists(int id)
+        {
+            return _context.Users.Any(u => u.userId == id);
+        }
+
     }
 }

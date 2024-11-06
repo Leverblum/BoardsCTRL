@@ -115,7 +115,6 @@ namespace BoardsCTRL.Controllers
             var user = new User
             {
                 username = userDto.username,
-                passwordHash = hashedPassword, // Almacena el hash de la contraseña
                 roleId = userDto.roleId,
                 userStatus = userDto.userStatus,
                 modifiedUserById = userId, // Asigna el usuario que lo creó

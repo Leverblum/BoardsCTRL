@@ -47,7 +47,6 @@ namespace BoardsProject.Controllers
             var user = new User
             {
                 username = userRegisterDto.username,
-                passwordHash = BCrypt.Net.BCrypt.HashPassword(userRegisterDto.password),
                 email = userRegisterDto.email,
                 roleId = role.roleId,
                 userStatus = true,
@@ -73,12 +72,6 @@ namespace BoardsProject.Controllers
             if (user == null)
             {
                 return Unauthorized("Usuario no encontrado o inactivo"); // Mensaje de error
-            }
-
-            // Verifica la contraseña
-            if (!BCrypt.Net.BCrypt.Verify(userLoginDto.password, user.passwordHash))
-            {
-                return Unauthorized("Credenciales inválidas"); // Mensaje de error
             }
 
             if (user.Role == null)

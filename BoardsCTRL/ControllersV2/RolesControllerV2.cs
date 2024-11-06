@@ -10,7 +10,7 @@ namespace BoardsCTRL.ControllersV2
 {
     [ApiVersion("2.0")]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class RolesControllerV2 : ControllerBase
     {
         /// <summary>
@@ -120,37 +120,45 @@ namespace BoardsCTRL.ControllersV2
             return CreatedAtAction(nameof(GetRole), new { id = role.roleId }, roleDto);
         }
 
-        // PUT: api/Roles/{id}
+        // Metodo PATCH para actualizar parcialmente un rol existente
+        // Solo se permite el acceso a este endpoint con el rol "Admin"
 
         /// <summary>
-        /// Actualiza un rol existente por su ID.
+        /// Actualiza parcialmente un rol existente por su ID.
         /// </summary>
-        /// <param name="id">ID del rol a actualizar</param>
-        /// <param name="updateRoleDto">Objeto DTO con la informacion acualizada del rol.</param>
-        /// <returns>Una respuesta vacia con codigo 204 si la actualizacion es exitosa.</returns>
+        /// <param name="id">ID del rol a actualizar.</param>
+        /// <param name="updateRoleDto">Objeto DTO con la informacion actualizada del rol.</param>
+        /// <returns>Una respuesta vacía con código 204 si la actualización es exitosa.</returns>
         [Authorize(Roles = "Admin")]
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateRole(int id, RoleDto updateRoleDto)
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> PatchRole(int id, RoleDto updateRoleDto)
         {
-            var username = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
+            // Busca el rol por su ID en la base de datos
             var role = await _context.Roles.FindAsync(id);
+
+            // Si no se encuentra el rol, retorna un código 404 (Not Found)
             if (role == null)
             {
                 return NotFound();
             }
 
-            // Actualizar las propiedades del rol
-            role.roleName = updateRoleDto.roleName;
+            // Verifica si los campos en el DTO no son nulos y actualiza solo esos campos
+            if (!string.IsNullOrEmpty(updateRoleDto.roleName))
+            {
+                role.roleName = updateRoleDto.roleName;
+            }
 
+            // Marca la entidad como modificada para que solo se actualicen los campos modificados
             _context.Entry(role).State = EntityState.Modified;
 
             try
             {
+                // Guarda los cambios en la base de datos
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
+                // Si ocurre un error de concurrencia (el rol fue modificado por otra persona antes)
                 if (!RoleExists(id))
                 {
                     return NotFound();
@@ -161,7 +169,8 @@ namespace BoardsCTRL.ControllersV2
                 }
             }
 
-            return NoContent(); // Retornar 204 No Content si la actualización es exitosa
+            // Retorna un código 204 (No Content) si la actualización fue exitosa
+            return NoContent();
         }
 
         private bool RoleExists(int id)
