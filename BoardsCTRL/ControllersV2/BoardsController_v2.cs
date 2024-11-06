@@ -1,4 +1,5 @@
 ﻿using Azure;
+using BoardsCTRL.Dtov2;
 using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
@@ -202,9 +203,7 @@ namespace BoardsCTRL.ControllersV2
         [SwaggerOperation(
             Summary = "Crear un nuevo tablero",
             Description = "Crea un nuevo tablero en el sistema con la información proporcionada.")]
-        [SwaggerResponse(201, "Tablero creado exitosamente", typeof(BoardDto))]
-        [SwaggerResponse(400, "Error en los datos proporcionados")]
-        public async Task<IActionResult> PostBoard(BoardDto createBoardDto)
+        public async Task<IActionResult> PostBoard(BoardDtov2 createBoardDto)
         {
             var userIdClaim = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
@@ -217,19 +216,25 @@ namespace BoardsCTRL.ControllersV2
             {
                 boardTitle = createBoardDto.boardTitle,
                 boardDescription = createBoardDto.boardDescription,
-                categoryId = createBoardDto.categoryId,
-                boardStatus = createBoardDto.boardStatus,
+                boardStatus = true,
                 createdBoardById = userId, // Asigna el usuario creador
                 createdBoardDate = DateTime.Now // Asigna la fecha de creacion
             };
+
+            // Asigna el categoryId solo si tiene un valor
+            if (createBoardDto.categoryId.HasValue)
+            {
+                board.categoryId = createBoardDto.categoryId.Value;
+            }
 
             // Añade el nuevo tablero a la base de datos
             _context.Boards.Add(board);
             await _context.SaveChangesAsync();
 
-            // Retorna el tablero recien creado con codigo 201 (Created)
+            // Retorna el tablero recién creado con código 201 (Created)
             return CreatedAtAction("GetBoards", new { id = board.boardId }, board);
         }
+
 
         // Metodo PATCH para actualizar campos especificos
         [HttpPatch("{id}")]
@@ -239,7 +244,7 @@ namespace BoardsCTRL.ControllersV2
             Description = "Actualiza campos especificos de un tablero sin necesidad de enviar todo el objeto.")]
         [SwaggerResponse(204, "Tablero actualizado exitosamente")]
         [SwaggerResponse(404, "Tablero no encontrado")]
-        public async Task<IActionResult> ActualizarBoardPatch(int id, [FromBody] BoardDto boardDTO)
+        public async Task<IActionResult> ActualizarBoardPatch(int id, [FromBody] BoardDtov2 boardDTO)
         {
             // Verifica si el ID es inválido o si el DTO es nulo
             if (id <= 0 || boardDTO == null)
@@ -276,25 +281,12 @@ namespace BoardsCTRL.ControllersV2
             // Solo actualiza los campos que han sido proporcionados
             if (!string.IsNullOrWhiteSpace(boardDTO.boardTitle))
             {
-                // Verifica si ya existe un board con el mismo título en la misma categoría
-                bool boardExists = await _context.Boards.AnyAsync(b => b.boardTitle == boardDTO.boardTitle
-                                                                        && b.categoryId == existingBoard.categoryId
-                                                                        && b.boardId != id);
-                if (boardExists)
-                {
-                    return BadRequest(new { message = "Ya existe un tablero con este nombre en la misma categoría." });
-                }
                 existingBoard.boardTitle = boardDTO.boardTitle;
             }
 
             if (!string.IsNullOrWhiteSpace(boardDTO.boardDescription))
             {
                 existingBoard.boardDescription = boardDTO.boardDescription;
-            }
-
-            if (boardDTO.boardStatus != null)
-            {
-                existingBoard.boardStatus = boardDTO.boardStatus; // Aquí ya está bien si es un bool.
             }
 
             // Asigna el usuario que hizo la modificación
