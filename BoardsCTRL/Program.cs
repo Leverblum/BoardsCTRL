@@ -1,17 +1,10 @@
 using BoardsProject.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.DependencyInjection; // Para AddVersionedApiExplorer y AddApiVersioning
-using Microsoft.AspNetCore.Mvc.Versioning; // Para opciones de versionado
-using BoardsCTRL.Extensions; // Extensión para versión de API;
-using System.Reflection; // Para obtener información de ensamblados
-using System.IO; // Para trabajar con rutas
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,8 +51,19 @@ builder.Services.AddHttpClient();
 // Configurar Swagger para generar documentación de la API y agregar autenticación JWT.
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "API BOARDSCTRL", Version = "v1" });
-    c.SwaggerDoc("v2", new OpenApiInfo { Title = "API BOARDSCTRL v2", Version = "v2" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "API BOARDSCTRL",
+        Version = "v1",
+        Description = "Primera version de la API para el manejo de las Slides en las pantallas de Finanzauto"
+    });
+
+    c.SwaggerDoc("v2", new OpenApiInfo
+    {
+        Title = "API BOARDSCTRL v2",
+        Version = "v2",
+        Description = "Segunda version de la API para el manejo de las Slides en las pantallas de Finanzauto"
+    });
 
     var xmlFile = "boardCtrl.xml"; // Ruta del archivo XML
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile); // Obtener la ruta completa
