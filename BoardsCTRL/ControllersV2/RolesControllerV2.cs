@@ -1,4 +1,5 @@
-﻿using BoardsProject.Data;
+﻿using BoardsCTRL.DTOv2;
+using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -131,25 +132,57 @@ namespace BoardsCTRL.ControllersV2
         /// <returns>Una respuesta vacía con código 204 si la actualización es exitosa.</returns>
         [Authorize(Roles = "Admin")]
         [HttpPatch("{id}")]
-        public async Task<IActionResult> PatchRole(int id, RoleDto updateRoleDto)
+        public async Task<IActionResult> PatchRole(int id, [FromBody] RoleDtov2 roleDTO)
         {
-            // Busca el rol por su ID en la base de datos
-            var role = await _context.Roles.FindAsync(id);
-
-            // Si no se encuentra el rol, retorna un código 404 (Not Found)
-            if (role == null)
+            // Verifica si el ID es inválido o si el DTO es nulo
+            if (id <= 0 || roleDTO == null)
             {
-                return NotFound();
+                return BadRequest(new { message = "Por favor, ingrese todos los campos correctamente." });
             }
 
-            // Verifica si los campos en el DTO no son nulos y actualiza solo esos campos
-            if (!string.IsNullOrEmpty(updateRoleDto.roleName))
+            // Busca el rol en la base de datos
+            var existingRole = await _context.Roles.FindAsync(id);
+            if (existingRole == null)
             {
-                role.roleName = updateRoleDto.roleName;
+                return NotFound(new { message = "El ID no es válido." });
             }
 
-            // Marca la entidad como modificada para que solo se actualicen los campos modificados
-            _context.Entry(role).State = EntityState.Modified;
+            // Verifica el ID del usuario
+            var userIdClaim = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return BadRequest(new { message = "ID de usuario no válido." });
+            }
+
+            // Validación de la longitud de 'roleName' si es proporcionado
+            if (roleDTO.roleName != null && roleDTO.roleName.Length > 50)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "El nombre del rol no puede tener más de 50 caracteres." });
+            }
+
+            // Solo actualiza los campos que han sido proporcionados
+            if (!string.IsNullOrWhiteSpace(roleDTO.roleName))
+            {
+                // Verifica si ya existe un rol con el mismo nombre
+                bool roleExists = await _context.Roles.AnyAsync(r => r.roleName == roleDTO.roleName && r.roleId != id);
+                if (roleExists)
+                {
+                    return BadRequest(new { message = "Ya existe un rol con este nombre." });
+                }
+                existingRole.roleName = roleDTO.roleName;
+            }
+
+            if (roleDTO.roleStatus.HasValue)
+            {
+                existingRole.roleStatus = roleDTO.roleStatus.Value;
+            }
+
+            // Asigna el usuario que hizo la modificación
+            existingRole.modifiedRoleById = userId;
+            existingRole.modifiedRoleDate = DateTime.Now;
+
+            // Marca el rol como modificado en el contexto
+            _context.Entry(existingRole).State = EntityState.Modified;
 
             try
             {
@@ -158,20 +191,16 @@ namespace BoardsCTRL.ControllersV2
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Si ocurre un error de concurrencia (el rol fue modificado por otra persona antes)
                 if (!RoleExists(id))
                 {
-                    return NotFound();
+                    return NotFound(new { message = "El rol no existe." });
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
-            // Retorna un código 204 (No Content) si la actualización fue exitosa
-            return NoContent();
+            return Ok(new { message = "Rol actualizado correctamente" });
         }
+
 
         private bool RoleExists(int id)
         {

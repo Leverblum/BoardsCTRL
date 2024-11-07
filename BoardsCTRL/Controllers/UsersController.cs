@@ -108,9 +108,6 @@ namespace BoardsCTRL.Controllers
                 return BadRequest("El nombre de usuario ya existe.");
             }
 
-            // Hashear la contraseña antes de guardarla
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDto.passwordHash);
-
             // Crea un nuevo usuario con los datos del DTO
             var user = new User
             {

@@ -1,4 +1,5 @@
-﻿using BoardsProject.Data;
+﻿using BoardsCTRL.DTOv2;
+using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -157,7 +158,7 @@ namespace BoardsCTRL.ControllersV2
             Description = "Actualiza campos específicos de una categoría sin necesidad de enviar todo el objeto.")]
         [SwaggerResponse(204, "Categoría actualizada exitosamente")]
         [SwaggerResponse(404, "Categoría no encontrada")]
-        public async Task<IActionResult> ActualizarCategoryPatch(int id, [FromBody] CategoryDto categoryDTO)
+        public async Task<IActionResult> ActualizarCategoryPatch(int id, [FromBody] CategoryDtov2 categoryDTO)
         {
             // Verifica si el ID es inválido o si el DTO es nulo
             if (id <= 0 || categoryDTO == null)
@@ -179,8 +180,8 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Valida la longitud del título de la categoría
-            if (!string.IsNullOrWhiteSpace(categoryDTO.categoryTitle) && categoryDTO.categoryTitle.Length > 100)
+            // Validación de la longitud de 'categoryTitle' si es proporcionado
+            if (categoryDTO.categoryTitle != null && categoryDTO.categoryTitle.Length > 100)
             {
                 return BadRequest(new { Code = "InvalidInput", Message = "El título de la categoría no puede tener más de 100 caracteres." });
             }
@@ -198,9 +199,9 @@ namespace BoardsCTRL.ControllersV2
                 existingCategory.categoryTitle = categoryDTO.categoryTitle;
             }
 
-            if (categoryDTO.categoryStatus != null)
+            if (categoryDTO.categoryStatus.HasValue)
             {
-                existingCategory.categoryStatus = categoryDTO.categoryStatus; // Aquí ya está bien si es un bool.
+                existingCategory.categoryStatus = categoryDTO.categoryStatus.Value;
             }
 
             // Asigna el usuario que hizo la modificación
@@ -217,18 +218,16 @@ namespace BoardsCTRL.ControllersV2
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Maneja la excepción si hay problemas de concurrencia
                 if (!CategoryExists(id))
                 {
                     return NotFound(new { message = "La categoría no existe." });
                 }
-
-                throw; // Re-lanza la excepción si no se ha manejado
+                throw;
             }
 
-            // Responde con el mensaje de éxito
             return Ok(new { message = "Categoría actualizada correctamente" });
         }
+
 
 
         // Metodo auxiliar para verificar si una categoria existe en la base de datos

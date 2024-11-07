@@ -244,6 +244,7 @@ namespace BoardsCTRL.ControllersV2
             Description = "Actualiza campos especificos de un tablero sin necesidad de enviar todo el objeto.")]
         [SwaggerResponse(204, "Tablero actualizado exitosamente")]
         [SwaggerResponse(404, "Tablero no encontrado")]
+        // Método PATCH para actualizar campos específicos
         public async Task<IActionResult> ActualizarBoardPatch(int id, [FromBody] BoardDtov2 boardDTO)
         {
             // Verifica si el ID es inválido o si el DTO es nulo
@@ -266,14 +267,14 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Valida la longitud del título
-            if (boardDTO.boardTitle.Length > 100)
+            // Validación de la longitud de 'boardTitle' si es proporcionado
+            if (boardDTO.boardTitle != null && boardDTO.boardTitle.Length > 100)
             {
                 return BadRequest(new { Code = "InvalidInput", Message = "El título del tablero no puede tener más de 100 caracteres." });
             }
 
-            // Valida la longitud de la descripción
-            if (boardDTO.boardDescription.Length > 255)
+            // Validación de la longitud de 'boardDescription' si es proporcionado
+            if (boardDTO.boardDescription != null && boardDTO.boardDescription.Length > 255)
             {
                 return BadRequest(new { Code = "InvalidInput", Message = "La descripción del tablero no puede tener más de 255 caracteres." });
             }
@@ -287,6 +288,18 @@ namespace BoardsCTRL.ControllersV2
             if (!string.IsNullOrWhiteSpace(boardDTO.boardDescription))
             {
                 existingBoard.boardDescription = boardDTO.boardDescription;
+            }
+
+            // Actualiza la categoría si se proporciona un 'categoryId'
+            if (boardDTO.categoryId.HasValue)
+            {
+                existingBoard.categoryId = boardDTO.categoryId.Value;
+            }
+
+            // Actualiza el estado del tablero solo si fue proporcionado
+            if (boardDTO.boardStatus.HasValue)
+            {
+                existingBoard.boardStatus = boardDTO.boardStatus.Value;
             }
 
             // Asigna el usuario que hizo la modificación
@@ -315,6 +328,7 @@ namespace BoardsCTRL.ControllersV2
             // Responde con el mensaje de éxito
             return Ok(new { message = "Tablero actualizado correctamente" });
         }
+
 
 
         // Metodo privado para verificar si un tablero existe por su ID

@@ -1,4 +1,5 @@
-﻿using BoardsProject.Data;
+﻿using BoardsCTRL.DTOv2;
+using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -205,87 +206,93 @@ namespace BoardsCTRL.ControllersV2
         /// Actualiza parcialmente una diapositiva existente.
         /// </summary>
         /// <param name="id">ID de la diapositiva a actualizar.</param>
-        /// <param name="slideDto">Objeto DTO con los campos a actualizar.</param>
+        /// <param name="slideDtov2">Objeto DTO con los campos a actualizar.</param>
         /// <returns>Una respuesta vacia con codigo 204 si la actualizacion es exitosa.</returns>
         [Authorize(Roles = "Admin")]
         [HttpPatch("{id}")]
-        public async Task<IActionResult> PartialUpdateSlide(int id, [FromBody] JsonPatchDocument<SlideDto> patchDoc)
+        public async Task<IActionResult> PartialUpdateSlide(int id, [FromBody] SlideDtov2 slideDTO)
         {
-            if (patchDoc == null)
+            // Verifica si el ID es inválido o si el DTO es nulo
+            if (id <= 0 || slideDTO == null)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "El documento de parche no puede ser nulo." });
+                return BadRequest(new { message = "Por favor, ingrese todos los campos correctamente." });
             }
 
-            // Busca la diapositiva por su ID en la base de datos
-            var slide = await _context.Slides.FindAsync(id);
-
-            // Si no se encuentra la diapositiva, retorna un codigo 404 (Not Found)
-            if (slide == null)
+            // Busca la Slide en la base de datos
+            var existingSlide = await _context.Slides.FindAsync(id);
+            if (existingSlide == null)
             {
-                return NotFound();
-            }
-
-            // Crea un DTO a partir de la diapositiva actual
-            var slideDto = new SlideDto
-            {
-                slideId = slide.slideId,
-                slideTitle = slide.slideTitle,
-                URL = slide.URL,
-                time = slide.time,
-                boardId = slide.boardId,
-                slideStatus = slide.slideStatus,
-                createdSlideById = slide.createdSlideById,
-                createdSlideDate = slide.createdSlideDate,
-                modifiedSlideById = slide.modifiedSlideById,
-                modifiedSlideDate = slide.modifiedSlideDate
-            };
-
-            // Aplica los cambios parciales al DTO
-            patchDoc.ApplyTo(slideDto, ModelState);
-
-            // Verifica si el modelo es válido después de aplicar el parche
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
+                return NotFound(new { message = "El ID no es válido." });
             }
 
             // Verifica el ID del usuario
             var userIdClaim = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
+                return BadRequest(new { message = "ID del usuario no válido." });
             }
 
-            // Actualiza los campos de la diapositiva con los valores modificados del DTO
-            slide.slideTitle = slideDto.slideTitle;
-            slide.URL = slideDto.URL;
-            slide.time = slideDto.time;
-            slide.boardId = slideDto.boardId;
-            slide.slideStatus = slideDto.slideStatus;
-            slide.modifiedSlideById = userId; // Usuario que realiza el cambio
-            slide.modifiedSlideDate = DateTime.Now;
+            // Valida la longitud del título de la diapositiva si es proporcionado
+            if (slideDTO.slideTitle != null && slideDTO.slideTitle.Length > 100)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "El título de la diapositiva no puede tener más de 100 caracteres." });
+            }
 
-            // Marca la diapositiva como modificada en el contexto de la base de datos
-            _context.Entry(slide).State = EntityState.Modified;
+            // Valida que el campo 'URL' no sea mayor a 255 caracteres si es proporcionado
+            if (slideDTO.URL != null && slideDTO.URL.Length > 255)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "La URL de la diapositiva no puede tener más de 255 caracteres." });
+            }
+
+            // Valida el tiempo solo si es propocionado y no negativo
+            if (slideDTO.time.HasValue && slideDTO.time < 0)
+            {
+                return BadRequest(new { Code = "InvalidInput", Message = "El tiempo de la diapositiva no puede ser negativo." });
+            }
+
+            // Solo actualiza los campos que han sido proporcionados
+            if (!string.IsNullOrWhiteSpace(slideDTO.slideTitle))
+            {
+                existingSlide.slideTitle = slideDTO.slideTitle;
+            }
+
+            if (!string.IsNullOrWhiteSpace(slideDTO.URL))
+            {
+                existingSlide.URL = slideDTO.URL;
+            }
+
+            if (slideDTO.time.HasValue)
+            {
+                existingSlide.time = slideDTO.time.Value;
+            }
+
+            if (slideDTO.slideStatus.HasValue)
+            {
+                existingSlide.slideStatus = slideDTO.slideStatus.Value;
+            }
+
+            // Asigna el usuario que hizo la modificación
+            existingSlide.modifiedSlideById = userId;
+            existingSlide.modifiedSlideDate = DateTime.Now;
+
+            // Marca la Slide como modificada en el contexto
+            _context.Entry(existingSlide).State = EntityState.Modified;
 
             try
             {
+                // Guarda los cambios en la base de datos
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
                 if (!SlideExists(id))
                 {
-                    return NotFound();
+                    return NotFound(new { message = "La Slide no existe"});
                 }
-                else
-                {
-                    throw; // Si ocurre otro error, lo lanza
-                }
+                throw;
             }
 
-            // Retorna un código 204 (No Content) si la actualización parcial fue exitosa
-            return NoContent();
+            return Ok(new { message = "Slide actualizada correctamente"});
         }
 
 

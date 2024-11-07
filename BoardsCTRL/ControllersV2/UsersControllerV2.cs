@@ -1,4 +1,5 @@
-﻿using BoardsProject.Data;
+﻿using BoardsCTRL.DTOv2;
+using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -126,8 +127,6 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest("El nombre de usuario ya existe.");
             }
 
-            // Hashear la contraseña antes de guardarla
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDto.passwordHash);
 
             // Crea un nuevo usuario con los datos del DTO
             var user = new User
@@ -158,60 +157,72 @@ namespace BoardsCTRL.ControllersV2
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
         [HttpPatch("{id}")]
-        public async Task<IActionResult> PartialUpdateUser(int id, [FromBody] JsonPatchDocument<UserDto> patchDoc)
+        public async Task<IActionResult> PartialUpdateUser(int id, [FromBody] UserDtov2 userDTO)
         {
-            if (patchDoc == null)
+            // Verifica si el ID es inválido o si el DTO es nulo
+            if (id <= 0 || userDTO == null)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "El documento de parche no puede ser nulo." });
+                return BadRequest(new { message = "Por favor, ingrese todos los campos correctamente." });
             }
 
             // Busca al usuario por ID en la base de datos
             var user = await _context.Users.FindAsync(id);
-
-            // Si no se encuentra el usuario, retorna NotFound
             if (user == null)
             {
-                return NotFound();
+                return NotFound(new { message = "El usuario no fue encontrado." });
             }
 
-            // Crea un DTO a partir del usuario actual
-            var userDto = new UserDto
-            {
-                userId = user.userId,
-                username = user.username,
-                roleId = user.roleId,
-                userStatus = user.userStatus,
-                createdUserBy = user.createdUserBy,
-                modifiedUserById = user.modifiedUserById,
-                createdUserDate = user.createdUserDate,
-                modifiedUserDate = user.modifiedUserDate
-            };
-
-            // Aplica los cambios parciales al DTO
-            patchDoc.ApplyTo(userDto, ModelState);
-
-            // Verifica si el modelo es válido después de aplicar el parche
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            // Aquí va la conversión de userId a int? para asegurar la correcta asignación
+            // Verifica el ID del usuario que está haciendo la modificacion
             var userIdClaim = User.FindFirst("userId")?.Value;
-            int? modifiedById = null;
-            if (!string.IsNullOrEmpty(userIdClaim))
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int modifiedById))
             {
-                modifiedById = int.Parse(userIdClaim); // Convierte el claim en int?
+                return BadRequest(new { message = "ID de usuario no válido. " });
             }
 
-            // Actualiza los campos del usuario con los valores modificados del DTO
-            user.username = userDto.username ?? user.username; // Solo actualiza si hay un nuevo valor
-            user.roleId = userDto.roleId; // Solo actualiza si hay un nuevo valor
-            user.userStatus = userDto.userStatus; // Solo actualiza si hay un nuevo valor
-            user.modifiedUserById = modifiedById; // Asigna el ID del usuario que hace la modificación
+            // Valida que el nombre de usuario no tenga más de 50 caracteres si es proporcionado
+            if (userDTO.username != null && userDTO.username.Length >50)
+            {
+                return BadRequest(new { message = "El nombre de usuario no puede tener mas de 50 caracteres. " });
+            }
+
+            // Valida que el correo no tenga más de 100 caracteres si es proporcionado
+            if (userDTO.email != null && userDTO.email.Length > 100)
+            {
+                return BadRequest(new { message = "El correo no puede tener más de 100 caracteres." });
+            }
+
+            // Valida que el estado del usuario sea un valor booleano válido si es proporcionado
+            if (userDTO.userStatus.HasValue && !userDTO.userStatus.HasValue)
+            {
+                return BadRequest(new { message = "El estado del usuarioes inválido." });
+            }
+
+            // Actualiza los campos del usuario solo si vienen en el DTO
+            if (!string.IsNullOrWhiteSpace(userDTO.username))
+            {
+                user.username = userDTO.username;
+            }
+
+            if (!string.IsNullOrWhiteSpace(userDTO.email))
+            {
+                user.email = userDTO.email;
+            }
+
+            if (userDTO.roleId.HasValue)
+            {
+                user.roleId = userDTO.roleId.Value;
+            }
+
+            if (userDTO.userStatus.HasValue)
+            {
+                user.userStatus = userDTO.userStatus.Value;
+            }
+
+            // Asigna el ID del usuario que hizo la modificacion y la fecha
+            user.modifiedUserById = modifiedById;
             user.modifiedUserDate = DateTime.Now;
 
-            // Marca el usuario como modificado en el contexto de la base de datos
+            // Marca el usuario como modificado en el conteto de la base de datos
             _context.Entry(user).State = EntityState.Modified;
 
             try
@@ -223,17 +234,14 @@ namespace BoardsCTRL.ControllersV2
             {
                 if (!UserExists(id))
                 {
-                    return NotFound();
+                    return NotFound(new { message = "El usuario no existe." });
                 }
-                else
-                {
-                    throw; // Si ocurre otro error, lo lanza
-                }
+                throw;
             }
 
-            // Retorna un código 204 (No Content) si la actualización parcial fue exitosa
             return NoContent();
         }
+
 
         private bool UserExists(int id)
         {
