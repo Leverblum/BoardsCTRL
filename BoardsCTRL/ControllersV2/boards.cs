@@ -1,26 +1,22 @@
-﻿using Azure;
-using BoardsCTRL.Dtov2;
+﻿using BoardsCTRL.Dtov2;
 using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
-using System.Collections.Generic;
-using System.Security.Claims;
 
 namespace BoardsCTRL.ControllersV2
 {
     [ApiVersion("2.0")]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")] // Define la ruta base para esta versión (api/v2/Boards)
-    public class BoardsControllerV2 : ControllerBase
+    public class boards : ControllerBase
     {
         private readonly BoardsContext _context;
 
-        public BoardsControllerV2(BoardsContext context)
+        public boards(BoardsContext context)
         {
             _context = context;
         }
@@ -211,6 +207,11 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Crea un nuevo objeto Board basado en el DTO recibido
             var board = new Board
             {
@@ -237,7 +238,7 @@ namespace BoardsCTRL.ControllersV2
 
 
         // Metodo PATCH para actualizar campos especificos
-        [HttpPatch("{id}")]
+        [HttpPatch]
         [Authorize(Roles = "Admin")]
         [SwaggerOperation(
             Summary = "Actualizar parcialmente un tablero",
@@ -267,16 +268,9 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Validación de la longitud de 'boardTitle' si es proporcionado
-            if (boardDTO.boardTitle != null && boardDTO.boardTitle.Length > 100)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "El título del tablero no puede tener más de 100 caracteres." });
-            }
-
-            // Validación de la longitud de 'boardDescription' si es proporcionado
-            if (boardDTO.boardDescription != null && boardDTO.boardDescription.Length > 255)
-            {
-                return BadRequest(new { Code = "InvalidInput", Message = "La descripción del tablero no puede tener más de 255 caracteres." });
+                return BadRequest(ModelState);
             }
 
             // Solo actualiza los campos que han sido proporcionados

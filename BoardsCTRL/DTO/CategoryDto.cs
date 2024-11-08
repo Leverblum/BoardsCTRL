@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace BoardsProject.DTO
+﻿namespace BoardsProject.DTO
 {
     public class CategoryDto
     {

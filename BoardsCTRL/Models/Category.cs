@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace BoardsProject.Models
+﻿namespace BoardsProject.Models
 {
     public class Category
     {

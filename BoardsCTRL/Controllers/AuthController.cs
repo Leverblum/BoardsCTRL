@@ -6,11 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net.Http;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
 
 namespace BoardsProject.Controllers
 {
@@ -28,36 +25,6 @@ namespace BoardsProject.Controllers
             _context = context;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
-        }
-
-        // POST: api/Auth/register
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(UserRegisterDto userRegisterDto)
-        {
-            // Verificar si el usuario ya existe
-            if (await _context.Users.AnyAsync(u => u.username == userRegisterDto.username))
-            {
-                return BadRequest("El usuario ya existe"); // Mensaje de error
-            }
-
-            // Buscar el rol por nombre
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.roleName == userRegisterDto.RoleName);
-
-            // Crear el nuevo usuario
-            var user = new User
-            {
-                username = userRegisterDto.username,
-                email = userRegisterDto.email,
-                roleId = role.roleId,
-                userStatus = true,
-                createdUserBy = Environment.MachineName,
-                createdUserDate = DateTime.Now
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return Ok("Usuario registrado exitosamente"); // Mensaje de éxito
         }
 
         [HttpPost("login")]

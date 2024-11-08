@@ -3,7 +3,6 @@ using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,12 +11,12 @@ namespace BoardsCTRL.ControllersV2
     [ApiVersion("2.0")]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    public class SlidesControllerV2 : ControllerBase
+    public class slides : ControllerBase
     {
         private readonly BoardsContext _context; // Contexto de la base de datos
 
         // Constructor que inyecta en el contexto de la base de datos
-        public SlidesControllerV2(BoardsContext context)
+        public slides(BoardsContext context)
         {
             _context = context;
         }
@@ -117,7 +116,7 @@ namespace BoardsCTRL.ControllersV2
         /// <param name="page">Numero de pagina.</param>
         /// <param name="size">Tamaño de la pagina</param>
         /// <returns>Lista de Slides asociadas al tablero</returns>
-        [HttpGet("List-Slide-by-board")]
+        [HttpGet("list-slide-by-board")]
         [Authorize(Roles = "Admin, User")] // Tanto usuarios como administrador pueden visualizar a gusto
         public IActionResult GetSlidesByBoard(int boardId, int page = 1, int size = 20)
         {
@@ -177,6 +176,11 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Crear una nueva instancia de la entidad Slide con los datos proporcionados
             var slide = new Slide
             {
@@ -209,7 +213,7 @@ namespace BoardsCTRL.ControllersV2
         /// <param name="slideDtov2">Objeto DTO con los campos a actualizar.</param>
         /// <returns>Una respuesta vacia con codigo 204 si la actualizacion es exitosa.</returns>
         [Authorize(Roles = "Admin")]
-        [HttpPatch("{id}")]
+        [HttpPatch]
         public async Task<IActionResult> PartialUpdateSlide(int id, [FromBody] SlideDtov2 slideDTO)
         {
             // Verifica si el ID es inválido o si el DTO es nulo
@@ -232,16 +236,9 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID del usuario no válido." });
             }
 
-            // Valida la longitud del título de la diapositiva si es proporcionado
-            if (slideDTO.slideTitle != null && slideDTO.slideTitle.Length > 100)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "El título de la diapositiva no puede tener más de 100 caracteres." });
-            }
-
-            // Valida que el campo 'URL' no sea mayor a 255 caracteres si es proporcionado
-            if (slideDTO.URL != null && slideDTO.URL.Length > 255)
-            {
-                return BadRequest(new { Code = "InvalidInput", Message = "La URL de la diapositiva no puede tener más de 255 caracteres." });
+                return BadRequest(ModelState);
             }
 
             // Valida el tiempo solo si es propocionado y no negativo
@@ -287,12 +284,12 @@ namespace BoardsCTRL.ControllersV2
             {
                 if (!SlideExists(id))
                 {
-                    return NotFound(new { message = "La Slide no existe"});
+                    return NotFound(new { message = "La Slide no existe" });
                 }
                 throw;
             }
 
-            return Ok(new { message = "Slide actualizada correctamente"});
+            return Ok(new { message = "Slide actualizada correctamente" });
         }
 
 

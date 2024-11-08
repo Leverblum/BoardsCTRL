@@ -35,7 +35,7 @@ namespace BoardsProject.Controllers
                 .Skip((pageNumber - 1) * pageSize) // Omite los roles de paginas anteriores
                 .Take(pageSize) // Toma solo el numero de roles especificados por 'pageSize'
                 .ToListAsync(); // Ejecuta la consulta y devuelve una lusta de roles
-             
+
             // Retorna los resultados paginados, incluyendo el numero total de roles, la pagina actual y el tamaño de la pagina
             return Ok(new
             {
@@ -133,9 +133,9 @@ namespace BoardsProject.Controllers
         {
             return _context.Roles.Any(e => e.roleId == id);
         }
-  
 
-    [Authorize(Roles = "Admin")]
+
+        [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> DeleteRole(int id)
         {

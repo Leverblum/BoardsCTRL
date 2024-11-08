@@ -5,14 +5,13 @@ using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace BoardsCTRL.ControllersV2
 {
     [ApiVersion("2.0")]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    public class RolesControllerV2 : ControllerBase
+    public class roles : ControllerBase
     {
         /// <summary>
         /// Controlador para la gestion de roles en la version 2.0 de la API.
@@ -26,7 +25,7 @@ namespace BoardsCTRL.ControllersV2
         /// Constructor que inicializa el contexto de la base de datos.
         /// </summary>
         /// <param name="context">Contexto de la base de datos.</param>
-        public RolesControllerV2(BoardsContext context)
+        public roles(BoardsContext context)
         {
             _context = context;
         }
@@ -106,6 +105,11 @@ namespace BoardsCTRL.ControllersV2
                 roleName = createRoleDto.roleName // Establece el nombre del rol
             };
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Agrega el nuevo rol al contexto de la base de datos
             _context.Roles.Add(role);
             await _context.SaveChangesAsync(); // Guarda los cambios en la base de datos de forma asincrona
@@ -131,7 +135,7 @@ namespace BoardsCTRL.ControllersV2
         /// <param name="updateRoleDto">Objeto DTO con la informacion actualizada del rol.</param>
         /// <returns>Una respuesta vacía con código 204 si la actualización es exitosa.</returns>
         [Authorize(Roles = "Admin")]
-        [HttpPatch("{id}")]
+        [HttpPatch]
         public async Task<IActionResult> PatchRole(int id, [FromBody] RoleDtov2 roleDTO)
         {
             // Verifica si el ID es inválido o si el DTO es nulo
@@ -154,10 +158,9 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Validación de la longitud de 'roleName' si es proporcionado
-            if (roleDTO.roleName != null && roleDTO.roleName.Length > 50)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "El nombre del rol no puede tener más de 50 caracteres." });
+                return BadRequest(ModelState);
             }
 
             // Solo actualiza los campos que han sido proporcionados

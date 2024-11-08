@@ -6,6 +6,6 @@
         public string username { get; set; }
 
         // Contraseña utilizada para iniciar sesion
-        public string  password { get; set; }
+        public string password { get; set; }
     }
 }

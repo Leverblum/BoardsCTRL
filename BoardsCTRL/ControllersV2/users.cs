@@ -3,7 +3,6 @@ using BoardsProject.Data;
 using BoardsProject.DTO;
 using BoardsProject.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,13 +11,13 @@ namespace BoardsCTRL.ControllersV2
     [ApiVersion("2.0")]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    public class UsersControllerV2 : ControllerBase
+    public class users : ControllerBase
     {
         // Inyeccion de dependencia del contexto de la base de datos
         private readonly BoardsContext _context;
 
         // Constructor que inicializa el contexto de la base de datos
-        public UsersControllerV2(BoardsContext context)
+        public users(BoardsContext context)
         {
             _context = context;
         }
@@ -120,6 +119,11 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Verifica si el nombre de usuario ya existe
             var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.username == userDto.username);
             if (existingUser != null)
@@ -156,7 +160,7 @@ namespace BoardsCTRL.ControllersV2
         /// <param name="patchDoc">Documento de parche con los campos a actualizar.</param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpPatch("{id}")]
+        [HttpPatch]
         public async Task<IActionResult> PartialUpdateUser(int id, [FromBody] UserDtov2 userDTO)
         {
             // Verifica si el ID es inválido o si el DTO es nulo
@@ -179,16 +183,9 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID de usuario no válido. " });
             }
 
-            // Valida que el nombre de usuario no tenga más de 50 caracteres si es proporcionado
-            if (userDTO.username != null && userDTO.username.Length >50)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { message = "El nombre de usuario no puede tener mas de 50 caracteres. " });
-            }
-
-            // Valida que el correo no tenga más de 100 caracteres si es proporcionado
-            if (userDTO.email != null && userDTO.email.Length > 100)
-            {
-                return BadRequest(new { message = "El correo no puede tener más de 100 caracteres." });
+                return BadRequest(ModelState);
             }
 
             // Valida que el estado del usuario sea un valor booleano válido si es proporcionado

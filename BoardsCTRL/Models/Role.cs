@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace BoardsProject.Models
+﻿namespace BoardsProject.Models
 {
     public class Role
     {

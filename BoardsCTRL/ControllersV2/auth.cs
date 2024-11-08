@@ -21,7 +21,7 @@ namespace BoardsCTRL.ControllersV2
     [ApiVersion("2.0")]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    public class AuthControllerV2 : ControllerBase
+    public class auth : ControllerBase
     {
         private readonly BoardsContext _context; // Contexto de la base de datos
         private readonly IConfiguration _configuration; // Configuración de JWT
@@ -34,52 +34,11 @@ namespace BoardsCTRL.ControllersV2
         /// <param name="context">Contexto de la base de datos.</param>
         /// <param name="configuration">Condiguracion para generar el token JWT.</param>
         /// <param name="httpClientFactory">Fabrica de clientes HTTP para autenticacion externa.</param>
-        public AuthControllerV2(BoardsContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        public auth(BoardsContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
-        }
-
-        // POST: api/Auth/register
-
-        /// <summary>
-        /// Registra un nuevo usuario en el sistema.
-        /// </summary>
-        /// <param name="userRegisterDto">Datos del usuario para registrarse.</param>
-        /// <returns>Respuesta indicando si el registro fue exitoso.</returns>
-        [HttpPost("register")]
-        [SwaggerOperation(
-            Summary = "Registrar un nuevo usuario",
-            Description = "Registra un usuario en el sistema si el nombre de usuario no esta ya en uso")]
-        [SwaggerResponse(200, "Usuario registrado exitosamente")]
-        [SwaggerResponse(400, "El usuario ya existe")]
-        public async Task<IActionResult> Register(UserRegisterDto userRegisterDto)
-        {
-            // Verificar si el usuario ya existe
-            if (await _context.Users.AnyAsync(u => u.username == userRegisterDto.username))
-            {
-                return BadRequest("El usuario ya existe");
-            }
-
-            // Buscar el rol por nombre
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.roleName == userRegisterDto.RoleName);
-
-            // Crear el nuevo usuario sin contraseña
-            var user = new User
-            {
-                username = userRegisterDto.username,
-                email = userRegisterDto.email,
-                roleId = role.roleId,
-                userStatus = true,
-                createdUserBy = Environment.MachineName,
-                createdUserDate = DateTime.Now
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return Ok("Usuario registrado exitosamente");
         }
 
         /// <summary>

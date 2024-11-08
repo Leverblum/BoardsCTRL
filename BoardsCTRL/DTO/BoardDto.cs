@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace BoardsProject.DTO
+﻿namespace BoardsProject.DTO
 {
     public class BoardDto
     {
@@ -10,7 +8,7 @@ namespace BoardsProject.DTO
         public string boardDescription { get; set; }
         public bool boardStatus { get; set; }
         public int? createdBoardById { get; set; }
-        public int? modifiedBoardById { get; set; } 
+        public int? modifiedBoardById { get; set; }
         public DateTime createdBoardDate { get; set; }
         public DateTime? modifiedBoardDate { get; set; }
     }

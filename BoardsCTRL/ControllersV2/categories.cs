@@ -12,13 +12,13 @@ namespace BoardsCTRL.ControllersV2
     [ApiVersion("2.0")]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    public class CategoriesControllerV2 : ControllerBase
+    public class categories : ControllerBase
     {
         // Contexto de la base de datos para interactuar con las categorias
         private readonly BoardsContext _context;
 
         // Constructor que inyecta el contexto de base de datos
-        public CategoriesControllerV2(BoardsContext context)
+        public categories(BoardsContext context)
         {
             _context = context;
         }
@@ -133,6 +133,11 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { Code = "InvalidInput", Message = "ID de usuario no encontrado." });
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Crea una nueva entidad 'Category' a partir del DTO proporcionado
             var category = new Category
             {
@@ -151,7 +156,7 @@ namespace BoardsCTRL.ControllersV2
         }
 
         // Método PATCH para actualizar parcialmente una categoría
-        [HttpPatch("{id}")]
+        [HttpPatch]
         [Authorize(Roles = "Admin")]
         [SwaggerOperation(
             Summary = "Actualizar parcialmente una categoría",
@@ -180,10 +185,9 @@ namespace BoardsCTRL.ControllersV2
                 return BadRequest(new { message = "ID de usuario no válido." });
             }
 
-            // Validación de la longitud de 'categoryTitle' si es proporcionado
-            if (categoryDTO.categoryTitle != null && categoryDTO.categoryTitle.Length > 100)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { Code = "InvalidInput", Message = "El título de la categoría no puede tener más de 100 caracteres." });
+                return BadRequest(ModelState);
             }
 
             // Solo actualiza los campos que han sido proporcionados
